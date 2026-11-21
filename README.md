@@ -94,6 +94,22 @@ $env:JAVA_HOME = "<你的 JDK17 路径>"
 - `permission_type(ADMIN)` 暂不鉴权
 - 自定义按钮需要 QQ 平台开通对应权限，未开通时自动降级为纯文本
 
+## 源码完整性
+
+当前版本的**全部源码**均在本仓库中，包括：
+
+- `app/`：Android 客户端全部 Kotlin 源码、资源（布局 / 图标 / 主题）、Python 运行时桥接（`assets/apy/astralite_shim.py`）、内置插件清单（`assets/plugins/catalog.json`）
+- `converter-app/`：AstrBot 插件转换工具（独立调试用 App）源码
+- `gradle/`、`build.gradle`、`settings.gradle`、`gradlew.bat`、`gradle.properties`：构建脚本
+- `docs/`：图标源图与 Release 说明
+
+以下内容**不属于源码**，故未提交：
+
+- 构建产物（`build/`、`*.apk`、`*.log`）
+- 本机工具链（`tools/` 下的 JDK / Gradle / Python）
+- 运行时用户数据（`assets/_data/`，含聊天与插件数据库，涉及隐私）
+- 历史备份与临时目录（`*.bak`、`_recovery/`、`_src_backup*/`、`tmp_*`）
+
 ## 免责声明
 
 - 本项目与腾讯、QQ、AstrBot 官方无隶属关系

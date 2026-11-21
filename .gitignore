@@ -32,7 +32,12 @@ Agent-Harness-Skills/
 .trae/
 .agents/
 base_apk_extract/
-converter-app/
+# 插件转换工具（converter-app）源码随仓库开源，但排除其构建产物与日志
+converter-app/.gradle/
+converter-app/app/build/
+converter-app/build/
+converter-app/local.properties
+converter-app/*.log
 cppbuild_out/
 temp_build/
 tmp_*/
