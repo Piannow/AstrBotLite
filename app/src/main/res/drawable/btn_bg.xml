@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 现代简约按钮底：浅色圆角 + 细描边；按下/禁用各有区分。
+     焦点态由 DpadFocus 统一接管（圆角实心 + 白描边），这里只管常态与按下。 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#E4E9F7" />
+            <corners android:radius="10dp" />
+            <stroke android:width="1dp" android:color="#C9D3EE" />
+        </shape>
+    </item>
+    <item android:state_enabled="false">
+        <shape android:shape="rectangle">
+            <solid android:color="#F3F4F8" />
+            <corners android:radius="10dp" />
+            <stroke android:width="1dp" android:color="#E8EAF0" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFF" />
+            <corners android:radius="10dp" />
+            <stroke android:width="1dp" android:color="#DCE1EC" />
+        </shape>
+    </item>
+</selector>

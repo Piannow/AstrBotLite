@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/colorPrimary</item>
+        <item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="android:colorAccent">@color/colorAccent</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:statusBarColor">@color/colorPrimaryDark</item>
+        <!-- 全局按钮统一样式：不用逐处改调用点，所有 Button(context) 自动套用 -->
+        <item name="android:buttonStyle">@style/AppButton</item>
+        <!-- 全局输入框统一样式：与按钮同一套圆角语言 -->
+        <item name="android:editTextStyle">@style/AppEditText</item>
+    </style>
+
+    <!-- 现代简约输入框：圆角浅底 + 细描边，内容留白更舒展 -->
+    <style name="AppEditText" parent="@android:style/Widget.Material.EditText">
+        <item name="android:background">@drawable/input_bg</item>
+        <item name="android:textColor">@color/textMain</item>
+        <item name="android:textColorHint">@color/textSub</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:paddingTop">9dp</item>
+        <item name="android:paddingBottom">9dp</item>
+    </style>
+
+    <!-- 现代简约按钮：圆角浅底 + 细描边，取消系统默认的大圆角阴影与全大写 -->
+    <style name="AppButton" parent="@android:style/Widget.Material.Button">
+        <item name="android:background">@drawable/btn_bg</item>
+        <item name="android:textColor">@color/textMain</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:paddingTop">9dp</item>
+        <item name="android:paddingBottom">9dp</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+</resources>

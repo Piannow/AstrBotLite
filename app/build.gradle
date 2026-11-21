@@ -1,0 +1,103 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'com.chaquo.python'
+}
+
+android {
+    namespace 'com.astrbot.lite'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.astrbot.lite"
+        minSdk 24
+        targetSdk 34
+        versionCode 435
+        versionName "1.7.265"
+        ndk {
+            // arm64-v8a（现代手机/盒子）；armeabi-v7a（32 位机顶盒，IP502H 类）；x86_64（模拟器）
+            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+        }
+    }
+
+    chaquopy {
+        defaultConfig {
+            // Chaquopy 15.x 配置：设备端实际 CPython 运行时由 target:3.11.6-0 工件提供
+            // （APK 内 libpython3.11.so + assets/chaquopy/build.json python_version=3.11 实证）。
+            // version 决定 pip 打包目标版本，必须与设备运行时大版本一致（3.11）。
+            version = '3.11'
+            // 构建机 Python：必须是**完整版** CPython 3.11（Chaquopy 会建 venv；embeddable 包的
+            // python.exe 不是真正的 venv 启动器，不认 pyvenv.cfg 的 home → 0xC0000135/找不到 stdlib）。
+            // 3.11.9 完整版安装于 D 盘（避免占用 C 盘）。
+            buildPython 'D:/AstrBotLite/tools/Python311full/python.exe'
+            // 第三方依赖内置（1.7.86 起启用）：依赖这些库的 AstrBot 市场插件可直接 import。
+            // 版本必须满足 minSdk 21（Chaquopy 按 --min-api-level 21 只认 android_21 预编译 wheel，
+            // C 扩展包无匹配 wheel 时会回退 sdist 源码构建=宿主机编译必败）：
+            //   aiohttp 3.9.5 无 a21 wheel → 3.9.1；pillow 10.3.0 无 a21 wheel → 9.2.0（唯一 a21 版）。
+            //   pyyaml：chaquo 索引仅 android_24、PyPI 无 pure wheel → 用自制 py3-none-any 纯 Python wheel
+            //   （D:/AstrBotLite/tools/wheelhouse，由 PyYAML-6.0.1 sdist 的 lib/yaml 提取，运行时纯 py 回退可用）。
+            pip {
+                options('--find-links', 'file:///D:/AstrBotLite/tools/wheelhouse')
+                // pip 23.1+ 强制：带 --platform 限制时必须 --only-binary=:all: 或 --no-deps；
+                // 本项目全部依赖均有 wheel（含自制 PyYAML 纯 py wheel），只装 wheel 即可
+                options('--only-binary=:all:')
+                install('requests==2.31.0')
+                // 本地自制 wheel（PyPI 无此版本）：官方 wheel RECORD 含 ../../bin/normalizer.exe
+                // 触发 Chaquopy 越界校验 → 删 entry point 后打 3.3.3 独占 pin，保证选中
+                install('charset-normalizer==3.3.3')
+                install('aiohttp==3.9.1')
+                install('pillow==9.2.0')
+                install('pyyaml==6.0.1')
+                // tzdata：Android/Windows 均无系统时区库，插件 zoneinfo（节假日/定时）必需（1.7.88 实测）
+                install('tzdata')
+                // 1.7.90：真机实锤——画境拾珍子模块 import lunar_python 断链 → 插件整体
+                // import 失败 → Web API 注册表 0 条 → 页面按钮全 404。两个纯 py 包（无 ABI 膨胀）
+                install('lunar-python')
+                install('pixivpy-async')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig signingConfigs.debug
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    // Disable stable IDs generation to avoid AAPT file locking issue on Windows (error 13)
+    // https://issuetracker.google.com/issues/203582679
+    aaptOptions {
+        noCompress = []  // Disable cruncher
+        // Disable stable IDs via gradle.properties android.enableStableIds=false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildFeatures {
+        buildConfig true
+    }
+    lint {
+        disable 'LintVitalAnalyzeRelease'
+        disable 'Interoperability'
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    // 轻量依赖：仅 OkHttp（HTTP + WebSocket），其余用系统 API
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    // WebView 内核升级（1.7.145）：App 内免安装把老 WebView 升到 Chromium 70+，根治机顶盒白屏。
+    // 必须在任何 WebView 实例化前调 WebViewUpgrade.upgrade(UpgradeAssetSource(...))；失败静默回退系统 WebView。
+    // WebView APK 放 assets/webview-upgrade.apk（从 WebViewPackage 仓库按架构下载，全架构统一打入 APK）。
+    implementation 'io.github.jonanorman.android.webviewup:core:0.1.0'
+    // CPython 运行时由 chaquopy target:3.11.6-0 提供（见 chaquopy.version），无需额外依赖；
+    // 历史上的 com.chaquo.python:python:3.13.15 行为 POM-only 许可说明且已整行注释，于 1.7.86 删除。
+    testImplementation 'junit:junit:4.13.2'
+}

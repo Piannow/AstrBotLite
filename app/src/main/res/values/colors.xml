@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FFF5F6FA</color>
+    <color name="card">#FFFFFFFF</color>
+    <color name="colorAccent">#FF6B8AFF</color>
+    <color name="colorPrimary">#FF4C6FFF</color>
+    <color name="colorPrimaryDark">#FF3D5AE0</color>
+    <color name="divider">#FFECEDF2</color>
+    <color name="err">#FFC62828</color>
+    <color name="ic_launcher_bg">#FF3F51B5</color>
+    <color name="ok">#FF2E7D32</color>
+    <color name="termBg">#FF10141A</color>
+    <color name="termText">#FFB7FFC4</color>
+    <color name="textMain">#FF1A1D26</color>
+    <color name="textSub">#FF8A8F9C</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

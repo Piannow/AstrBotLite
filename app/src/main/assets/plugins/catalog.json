@@ -1,0 +1,359 @@
+[
+  {
+    "id": "help",
+    "name": "帮助菜单",
+    "version": "1.1.0",
+    "author": "AstrBot Lite",
+    "description": "内置：发送 /help 查看插件使用说明（每页一个插件，顶部列出带序号的全插件清单；+ 下一个、- 上一个、+2 / -2 一次翻多页，也可直接发序号如「3」直达第 3 个）",
+    "type": "prompt",
+    "enabled": true,
+    "commands": [
+      {
+        "match": "/help"
+      },
+      {
+        "match": "/帮助"
+      },
+      {
+        "match": "+"
+      },
+      {
+        "match": "-"
+      }
+    ]
+  },
+  {
+    "id": "netdisk",
+    "name": "网盘助手",
+    "version": "1.0.0",
+    "author": "AstrBot Lite",
+    "description": "找 关键词 全网搜资源（夸克/UC/123）；网盘:链接 → 打开<文件夹> → 选择<文件> 取直链（支持 123网盘/夸克网盘/UC网盘）",
+    "type": "netdisk",
+    "trigger": "passive",
+    "enabled": true,
+    "config": [
+      {
+        "key": "listLimit",
+        "label": "每次列出数量",
+        "value": "100",
+        "secret": false
+      },
+      {
+        "key": "searchApi",
+        "label": "资源搜索接口（可选，留空用默认）",
+        "value": "",
+        "secret": false
+      }
+    ],
+    "commands": [
+      {
+        "match": "网盘"
+      },
+      {
+        "match": "打开"
+      },
+      {
+        "match": "选择"
+      },
+      {
+        "match": "直链"
+      },
+      {
+        "match": "列表"
+      },
+      {
+        "match": "刷新"
+      },
+      {
+        "match": "帮助"
+      },
+      {
+        "match": "re:^搜索 .+$"
+      },
+      {
+        "match": "re:^搜 .+$"
+      },
+      {
+        "match": "re:^找 .+$"
+      },
+      {
+        "match": "re:^找[:：].+$"
+      }
+    ],
+    "doc": "网盘助手使用说明：\n0. 全网搜资源：发「找 关键词」直接搜夸克/UC/123网盘的公开分享（无需先建会话），发序号打开结果；发「找」翻下一页。搜出的结果会自动带入密码打开。\n1. 发链接：直接发送「网盘:分享链接」即可打开（可带「密码:xxx」）。支持：123网盘（无需登录、不限大小）、夸克网盘、UC网盘。\n2. 进文件夹：发「打开<文件夹名>」（或发数字选择）。\n3. 取直链：发「选择<文件名>」（或发数字），会返回文件信息 + 下载直链。\n4. 返回上级：发「%」（或「回退」「返回」；全角「％」也认）。\n5. 在分享里找文件：发「搜索 关键字」（打开网盘后在当前目录找；未打开时搜全网）。\n6. 其他：发「列表」刷新目录、「帮助」看网盘指令。\n7. 登录：插件页点「登录」可网页登录（夸克/UC 登录后直链更稳）。\n8. 自定义搜索接口：配置项 searchApi 可填自建 PanSou 地址（默认用内置公共实例）。\n提示：夸克/UC 直链有时需带请求头（Referer/UA）才能下载，复制直链后用支持防盗链的下载工具。"
+  },
+  {
+    "id": "anime",
+    "name": "云播看番",
+    "version": "2.4.0",
+    "author": "AstrBot Lite",
+    "description": "云播番剧播放：「看番 番剧名」直接搜出选集列表，回复数字给 1080P 完整流 m3u8（无需登录/大会员）",
+    "type": "anime",
+    "trigger": "passive",
+    "enabled": true,
+    "config": [],
+    "commands": [
+      {
+        "match": "看番",
+        "type": "prefix"
+      },
+      {
+        "match": "/anime",
+        "type": "prefix"
+      }
+    ],
+    "doc": "云播看番使用说明（2.4.0 极简云播版）：\n· 发送「看番 番剧名」，自动搜索并直接列出选集，例如：看番 鬼灭之刃\n· 回复集数编号（1、2、3…），直接给该集 1080P 完整流 m3u8 播放链接\n· 无需登录、无需大会员；链接复制到 VLC/MX/nPlayer 打开或保存为 .m3u8\n· 发「取消」结束当前选择，换关键词重搜"
+  },
+  {
+    "id": "filter_bracket",
+    "name": "过滤括号内容(内置)",
+    "version": "1.0.0",
+    "author": "AstrBot Lite",
+    "description": "内置：删除 AI 回复中括号（中文（）/英文()）内的心声、动作、神态描写，适合 TTS",
+    "type": "prompt",
+    "trigger": "always",
+    "enabled": true,
+    "commands": [
+      {
+        "match": "/filter_bracket",
+        "prompt": "回复请保持纯净：不要在括号或其他描述性标签内输出心声、动作或神态描写，直接输出正文。",
+        "regex": "（[^）]*）|\\([^)]*\\)"
+      }
+    ]
+  },
+  {
+    "id": "filter_emoji",
+    "name": "过滤表情包(内置)",
+    "version": "1.0.0",
+    "author": "AstrBot Lite",
+    "description": "内置：删除 AI 回复中的表情符号（emoji），让输出更干净，适合 TTS",
+    "type": "prompt",
+    "trigger": "always",
+    "enabled": true,
+    "commands": [
+      {
+        "match": "/filter_emoji",
+        "prompt": "回复请保持纯净：不要使用任何表情符号（emoji），只输出文字。",
+        "regex": "[\\uD83C\\uD83D\\uD83E][\\uDC00-\\uDFFF]|[\\u2600-\\u27BF]|[\\uFE0F\\u200D]"
+      }
+    ]
+  },
+  {
+    "id": "filter_blankline",
+    "name": "去除多余空行(内置)",
+    "version": "1.1.0",
+    "author": "AstrBot Lite",
+    "description": "内置：把 AI 回复中的连续空行压缩成一个，或完全去除换行，回复更整洁",
+    "type": "prompt",
+    "trigger": "always",
+    "enabled": true,
+    "config": [
+      {
+        "key": "mode",
+        "label": "清理模式：0=压缩多余空行 1=完全去空行(不留换行)",
+        "value": "0",
+        "secret": false
+      }
+    ],
+    "commands": [
+      {
+        "match": "/filter_blankline",
+        "prompt": "回复请保持紧凑：不要输出多余的空行。",
+        "regex": "\\n\\s*\\n+",
+        "replaceWith": "\\n"
+      }
+    ],
+    "doc": "去除多余空行使用说明：\n自动清理 AI 回复中的空行。\n在「配置」中可选两种模式：\n0=压缩多余空行：把连续多个空行压成一个换行（默认）；\n1=完全去空行：去掉回复里所有换行，文字连成一段（不回车）。"
+  },
+  {
+    "id": "tts",
+    "name": "TTS 语音合成",
+    "version": "1.0.0",
+    "author": "AstrBot Lite",
+    "description": "文字转语音：安装并启用后，机器人所有回复自动转成语音发出（无需发命令；失败自动回退文字）",
+    "type": "tts",
+    "trigger": "never",
+    "enabled": true,
+    "config": [
+      {
+        "key": "baseUrl",
+        "label": "服务地址（OpenAI 兼容，留空走 AI 池）",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "apiKey",
+        "label": "API Key（留空走 AI 池）",
+        "value": "",
+        "secret": true
+      },
+      {
+        "key": "model",
+        "label": "TTS 模型",
+        "value": "tts-1",
+        "secret": false
+      },
+      {
+        "key": "voice",
+        "label": "声音",
+        "value": "alloy",
+        "secret": false
+      }
+    ],
+    "commands": [],
+    "doc": "TTS 语音合成使用说明：\n1. 安装并启用本插件后，机器人所有回复会自动转成语音发出，不需要发任何命令。\n2. 配置里填服务地址/密钥/模型（OpenAI 兼容，如 tts-1），留空则用 AI 池里分配的语音条目。\n3. 合成失败会自动回退成文字，不影响正常聊天。\n提示：配合「过滤括号内容」「过滤表情包」插件，语音听起来更干净。"
+  },
+  {
+    "id": "text2image",
+    "name": "文生图",
+    "version": "1.0.0",
+    "author": "AstrBot Lite",
+    "description": "AI 绘画：发送「画图 描述」或「画 关键词」，基于文字描述生成图片（OpenAI 兼容出图服务，可留空走 AI 池）",
+    "type": "text2image",
+    "trigger": "passive",
+    "enabled": true,
+    "config": [
+      {
+        "key": "baseUrl",
+        "label": "服务地址（OpenAI 兼容，留空走 AI 池）",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "apiKey",
+        "label": "API Key（留空走 AI 池）",
+        "value": "",
+        "secret": true
+      },
+      {
+        "key": "model",
+        "label": "模型名",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "size",
+        "label": "图片尺寸",
+        "value": "1024x1024",
+        "secret": false
+      },
+      {
+        "key": "style",
+        "label": "默认风格（可选）",
+        "value": "",
+        "secret": false
+      }
+    ],
+    "commands": [
+      {
+        "match": "画图"
+      },
+      {
+        "match": "画"
+      },
+      {
+        "match": "生成图片"
+      },
+      {
+        "match": "作图"
+      }
+    ],
+    "doc": "文生图使用说明：\n1. 发送「画图 描述」或「画 关键词」，如「画图 夕阳下的海边小镇」\n2. 可选加风格描述：「画图 赛博朋克城市夜景 梵高风格」\n3. 服务地址/密钥/模型可在配置里填（OpenAI 兼容出图接口），留空则用 AI 池里分配的出图条目\n图片会发送到当前对话。"
+  },
+  {
+    "id": "wordreplace",
+    "name": "文本替换",
+    "version": "2.0.0",
+    "author": "AstrBot Lite",
+    "description": "自动文本替换：安装并启用后，机器人发出的每条回复都会按规则做字面替换（无需发命令）",
+    "type": "wordreplace",
+    "trigger": "always",
+    "enabled": true,
+    "config": [
+      {
+        "key": "find1",
+        "label": "查找文本 1（被替换）",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "replace1",
+        "label": "替换为 1",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "find2",
+        "label": "查找文本 2（被替换）",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "replace2",
+        "label": "替换为 2",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "find3",
+        "label": "查找文本 3（被替换）",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "replace3",
+        "label": "替换为 3",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "find4",
+        "label": "查找文本 4（被替换）",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "replace4",
+        "label": "替换为 4",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "find5",
+        "label": "查找文本 5（被替换）",
+        "value": "",
+        "secret": false
+      },
+      {
+        "key": "replace5",
+        "label": "替换为 5",
+        "value": "",
+        "secret": false
+      }
+    ],
+    "commands": [],
+    "doc": "文本替换使用说明（2.0.0 分对版）：\n1. 配置页每行一对：左框=要被替换的文本，右框=替换成什么\n2. 右框留空＝删除左框文本（命中即删）；左框留空＝忽略该行\n3. 按字面匹配（不是正则），只替换机器人自己发出的回复，无需任何命令\n4. 最多 5 对；旧版「原词→新词」多行规则升级时自动迁移进前 5 行\n5. 删除某条规则：把左框也清空后保存即可"
+  },
+  {
+    "id": "galgame",
+    "name": "Galgame助手",
+    "version": "1.0.0",
+    "author": "AstrBot Lite",
+    "description": "Galgame 搜索与推荐一体（数据源：鲲 Galgame 论坛 kungal.com）：「gal 关键词」搜作品、「gal推荐」看评分榜，回复编号看详情与资源，再回编号免登录取网盘直链",
+    "type": "galgame",
+    "trigger": "passive",
+    "enabled": true,
+    "commands": [
+      {
+        "match": "gal"
+      },
+      {
+        "match": "gal推荐"
+      },
+      {
+        "match": "找galgame资源"
+      }
+    ],
+    "doc": "Galgame助手使用说明（1.0.0 · 数据源：鲲 Galgame 论坛 https://www.kungal.com，开源项目 kun-galgame-forum）：\n· 搜索：「gal 关键词」（如 gal clannad）；同关键词再发一次翻下一页，列表头部显示 第X/Y页\n· 推荐：「gal推荐」→ 社区评分加权 Top10 榜（已与搜索合并：裸 gal 只给用法提示）\n· 资源直搜：「找galgame资源 关键词」（如 找galgame资源 汉化包）→ 直接列出可取直链的资源（备注/作品名模糊匹配，同关键词再发翻页）\n· 结果回复编号 → 作品详情：发售日/制作组/评分/平台/是否汉化 + 封面图 + 资源列表\n· 详情里回复资源编号 → 免登录取网盘直链（含提取码/解压密码，自动附资源简介——站方在简介里标明密码）\n· 资源列表带密码标记：🔒密码见简介 / 🔓无密码（按简介判定；没提密码不标）\n· 全量模式：成人内容不过滤（含 NSFW 结果与标签）；发「取消」随时退出；论坛页 https://www.kungal.com/galgame/{id}"
+  }
+]

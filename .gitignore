@@ -1,0 +1,60 @@
+# ---- Gradle / Android ----
+.gradle/
+.kotlin/
+build/
+*/build/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ---- 本地产物与日志 ----
+*.apk
+!app/src/main/assets/**/*.apk
+*.aab
+*.log
+hs_err_pid*
+replay_pid*
+jar2.txt.*.tmp
+
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyo
+
+# ---- 备份/临时/工具目录（不发布） ----
+tools/
+agent/
+Agent-Harness-Skills/
+.claude/
+.trae/
+.agents/
+base_apk_extract/
+converter-app/
+cppbuild_out/
+temp_build/
+tmp_*/
+_recovery/
+_src_backup*/
+zig_*/
+*.bak
+*.bak-*
+**/.backups/
+app/src/main/assets/_data/
+
+# ---- 根目录杂项 ----
+java2kotlin.py
+check_dex.py
+fix_annotations.py
+temp_check.ps1
+test.txt
+test_input*.txt
+DEVELOPER_HANDOFF.md
+clean_response.plugin.json
+skills-lock.json
+
+# ---- 系统 ----
+.DS_Store
+Thumbs.db
