@@ -29,6 +29,17 @@
 
 > 这是测试版本，功能和接口仍可能变化。升级前请备份机器人配置与插件数据。
 
+## 配套工具：机顶盒剪切板输入
+
+**[LanClipboard · 局域网剪切板](https://github.com/Piannow/LanClipboard)** 是为 AstrBotLite 编写的开源辅助工具。
+
+在机顶盒上用遥控器填写 AstrBotLite 的人设卡、提示词等长文本十分麻烦。使用 LanClipboard，可以在手机上复制或输入文字，通过局域网发送到机顶盒剪切板，再粘贴到 AstrBotLite，省去在电视上逐字输入的过程。
+
+- [打开 LanClipboard 项目与使用说明](https://github.com/Piannow/LanClipboard#readme)
+- [下载 LanClipboard 最新 APK](https://github.com/Piannow/LanClipboard/releases/latest)
+
+这是独立于 AstrBotLite 的可选工具，不修改主项目配置，也不是 AstrBot 官方组件。
+
 ## 功能概览
 
 - **QQ 官方机器人接入**：WebSocket 网关 + REST 收发，支持群聊 / 单聊、被动回复与主动消息
