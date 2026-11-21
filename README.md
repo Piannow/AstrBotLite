@@ -72,6 +72,22 @@ $env:JAVA_HOME = "<你的 JDK17 路径>"
 
 > `app/build.gradle` 中 Chaquopy 的 `buildPython` 指向本机 Python 路径，构建前请改成你自己的路径。
 
+## 内置插件与第三方来源
+
+内置插件代码均由本项目自行实现（MIT 授权），但部分插件运行时会访问第三方站点或公开接口，本项目**未打包其源码**：
+
+| 内置插件 | 外部来源 |
+|---|---|
+| Galgame助手 | 数据来自鲲 Galgame 论坛 `kungal.com`（开源项目 [kun-galgame-nuxt3](https://github.com/KUN1007/kun-galgame-nuxt3)，AGPL-3.0） |
+| 云播看番 | 播放源为邦宁云播 `video.isyour.love`；B 站解析参考 [bililidownloadtool](https://github.com/NANblogink/bilibilidownloadtool)（MIT） |
+| 网盘助手 | 搜索默认用 PanSou 公共实例（[fish2018/pansou](https://github.com/fish2018/pansou)，MIT，可自建）；直链行为参考 [LinkSwift](https://github.com/hmjz100/LinkSwift)（AGPL-3.0） |
+| 游戏资源助手 | 原数据源为 123资源库 `www.123zyk.com`；当前数据源未接入，功能不可用 |
+| 文生图 / TTS 语音合成 | 无内置服务，调用用户自行配置的 OpenAI 兼容接口 |
+| 帮助菜单 / 文本替换 / 过滤括号内容 / 过滤表情包 / 去除多余空行 | 纯本地处理，无外部依赖 |
+| 人格化 / 回复润色 | 已退役（人格化代码保留但不在清单展示，回复润色已移除） |
+
+完整归属与许可证说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
 ## AstrBot 插件兼容范围
 
 已适配大部分常用插件 API：

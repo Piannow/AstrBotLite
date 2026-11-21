@@ -34,11 +34,41 @@ AstrBotLite 使用了以下开源项目与运行时。各项目的版权归其�
 | lunar-python | 农历/节气（插件依赖） | MIT |
 | pixivpy-async | Pixiv 接口（插件依赖） | MIT |
 
+## 前端运行时资源（随 APK 打包）
+
+| 项目 | 用途 | 许可证 |
+|---|---|---|
+| Babel Standalone（`assets/webruntime/babel.min.js`） | 插件 WebUI 的 ES 语法降级转译 | MIT |
+
+## 内置插件来源与第三方数据源声明
+
+AstrBotLite 的「内置插件」由本项目自行实现（代码以 MIT 授权），但其中部分插件在运行时会访问**第三方站点或公开接口**。
+这些站点/项目的版权与条款归各自作者所有，本项目**未打包其源代码**，也不对其可用性、内容合法性负责。
+
+| 内置插件 | 实现归属 | 外部依赖 / 数据源 | 说明 |
+|---|---|---|---|
+| 帮助菜单 `help` | 本项目自研 | 无 | MIT |
+| 网盘助手 `netdisk` | 本项目自研 | 搜索默认使用 PanSou 公共实例 `so.252035.xyz`（[fish2018/pansou](https://github.com/fish2018/pansou)，MIT，可配置自建）；直链获取行为参考 [LinkSwift 1.1.3](https://github.com/hmjz100/LinkSwift)（AGPL-3.0）；夸克 / UC / 123 网盘使用其网页端非官方接口 | 未包含 PanSou、LinkSwift 源码；网盘接口条款以各平台为准 |
+| 云播看番 `anime` | 本项目自研 | 播放源：邦宁云播 `video.isyour.love`（第三方聚合接口）；搜索与标题：Bilibili 公开接口；B 站解析逻辑参考 [bililidownloadtool 2.2.0](https://github.com/NANblogink/bilibilidownloadtool)（MIT） | 未包含上述项目源码 |
+| Galgame助手 `galgame` | 本项目自研 | 数据来自鲲 Galgame 论坛 `kungal.com` 的公开 API；论坛开源项目 [kun-galgame-nuxt3](https://github.com/KUN1007/kun-galgame-nuxt3)（AGPL-3.0） | 仅调用公开接口，未包含论坛源码 |
+| 游戏资源助手 `game` | 本项目自研 | 原设计数据源为 123资源库 `www.123zyk.com`（第三方站点）；当前数据源未接入，功能不可用 | 不伪造任何站点地址或直链 |
+| 文生图 `text2image` | 本项目自研 | 无内置服务；调用用户自行配置的 OpenAI 兼容出图接口 | 不内置任何密钥 |
+| TTS 语音合成 `tts` | 本项目自研 | 无内置服务；调用用户自行配置的 OpenAI 兼容语音接口 | 不内置任何密钥 |
+| 文本替换 `wordreplace` | 本项目自研 | 无 | 纯字面替换 |
+| 去除多余空行 `filter_blankline` | 本项目自研 | 无 | 纯正则处理 |
+| 过滤括号内容 `filter_bracket` | 本项目自研 | 无 | 纯正则处理 |
+| 过滤表情包 `filter_emoji` | 本项目自研 | 无 | 纯正则处理 |
+| 人格化 `personality` | 本项目自研，已退役 | 无 | 代码保留，不再在插件清单展示 |
+| 回复润色 `humanizer` | 已移除 | 无 | 仅保留退役插件 ID 兼容 |
+
+> 若某个外部数据源/接口的条款与你的使用场景冲突，请在插件页停用对应内置插件。第三方内容（番剧、游戏、Galgame 资源等）的版权归原权利人所有。
+
 ## 生态与兼容性说明
 
 | 项目 | 说明 | 许可证 |
 |---|---|---|
 | [AstrBot](https://github.com/AstrBotDevs/AstrBot) | 本项目是独立的轻量实现，**未包含** AstrBot 源代码；仅参考其公开插件接口文档，提供插件兼容层 | AGPL-3.0 |
+| [AstrBot 插件集合](https://github.com/AstrBotDevs/AstrBot_Plugins_Collection) | 插件市场索引数据（仅拉取 JSON 清单，不含插件代码） | AGPL-3.0 |
 | AstrBot 社区插件 | 由用户自行从插件市场安装，不随本项目分发；各插件遵循其作者声明的许可证 | 以插件为准 |
 | QQ 机器人官方 API | 使用腾讯 QQ 开放平台公开接口 | 以腾讯开放平台条款为准 |
 
