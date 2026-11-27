@@ -31,12 +31,12 @@ object WebConverter {
         "unpkg.com", "cdnjs.cloudflare.com", "cdn.bootcdn.net", "cdn.bootcss.com",
         "staticfile.org", "fonts.googleapis.com", "fonts.gstatic.com",
         "registry.npmmirror.com", "lf-cdn.com", "lf6-cdn.com", "lf3-cdn.com",
-        "lf24-cdn.com", "npm.elemecdn.com", "cdn.staticfile.org", "ajax.googleapis.com"
+        "lf24-cdn.com", "npm.elemecdn.com", "cdn.staticfile.org", "ajax.googleapis.com",
     )
 
     private val RES_EXT = Regex(
         """\.(js|mjs|css|woff2?|ttf|eot|otf|svg|png|jpe?g|gif|webp|ico|mp3|mp4)(\?|#|$)""",
-        RegexOption.IGNORE_CASE
+        RegexOption.IGNORE_CASE,
     )
     private val HTML_SRC = Regex("""(?:src|href|data-src|poster)\s*=\s*["'](https?://[^"']+)["']""", RegexOption.IGNORE_CASE)
     private val CSS_URL = Regex("""url\(\s*["']?(https?://[^"')]+)["']?\s*\)""", RegexOption.IGNORE_CASE)
@@ -66,7 +66,7 @@ object WebConverter {
         return null
     }
 
-    private fun sha1_10(s: String): String {
+    private fun shortSha1(s: String): String {
         val d = MessageDigest.getInstance("SHA-1").digest(s.toByteArray())
         return d.joinToString("") { "%02x".format(it) }.take(12)
     }
@@ -150,7 +150,7 @@ object WebConverter {
         var skipped = 0
         for (u in urls) {
             onProgress("Web 离线转换：下载资源 ${done + 1}/${urls.size}", done, urls.size)
-            val name = sha1_10(u) + extOf(u)
+            val name = shortSha1(u) + extOf(u)
             val target = File(cacheDir, name)
             if (target.isFile && target.length() in 1..MAX_FILE_BYTES) {
                 map[u] = name
@@ -162,22 +162,27 @@ object WebConverter {
                 val resp = http.newCall(
                     okhttp3.Request.Builder().url(u)
                         .header("User-Agent", "AstrBotLite/1.0 (Android)")
-                        .build()
+                        .build(),
                 ).execute()
                 val body = resp.body
                 if (!resp.isSuccessful || body == null) {
-                    skipped++; done++; continue
+                    skipped++
+                    done++
+                    continue
                 }
                 val bytes = body.bytes()
                 if (bytes.isEmpty() || bytes.size > MAX_FILE_BYTES || totalBytes + bytes.size > MAX_TOTAL_BYTES) {
-                    skipped++; done++; continue
+                    skipped++
+                    done++
+                    continue
                 }
                 target.writeBytes(bytes)
                 map[u] = name
                 totalBytes += bytes.size
                 done++
             } catch (_: Exception) {
-                skipped++; done++
+                skipped++
+                done++
             }
         }
 

@@ -35,8 +35,10 @@ class BotService : Service() {
 
         /** 账号级引擎池：accountId → 引擎（同账号绝不允许并存两个） */
         private val engines = ConcurrentHashMap<String, BotEngine>()
+
         /** 没有任何账号时的兜底引擎（用全局 Config 凭证） */
         @Volatile private var unbound: BotEngine? = null
+
         @Volatile private var appCtx: Context? = null
 
         /** 只读快照，供账号页/插件页判断各账号是否在线 */
@@ -212,7 +214,7 @@ class BotService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "机器人服务",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_LOW,
             )
             nm.createNotificationChannel(channel)
         }

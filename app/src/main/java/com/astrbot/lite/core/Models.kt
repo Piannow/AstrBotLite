@@ -16,7 +16,7 @@ data class Persona(
     val description: String,
     val prompt: String,
     val greeting: String,
-    val createdAt: Long
+    val createdAt: Long,
 ) {
     fun toJson(): String {
         val o = JSONObject()
@@ -40,7 +40,7 @@ data class Persona(
                 description = o.optString("description", ""),
                 prompt = o.optString("prompt", "你是一个乐于助人的AI助手，请用中文简洁友好地回答问题。"),
                 greeting = o.optString("greeting", "你好呀~有什么可以帮你？"),
-                createdAt = o.optLong("createdAt", System.currentTimeMillis())
+                createdAt = o.optLong("createdAt", System.currentTimeMillis()),
             )
         }
     }
@@ -51,8 +51,8 @@ data class PluginCommand(
     val match: String,
     val prompt: String,
     val reply: String?,
-    val regex: String? = null,        // 正则清理规则（总是触发 hook 插件用）：对回复按正则匹配
-    val replaceWith: String? = null   // 匹配后替换为的内容；默认 null=删除（等价替换为空串）
+    val regex: String? = null, // 正则清理规则（总是触发 hook 插件用）：对回复按正则匹配
+    val replaceWith: String? = null, // 匹配后替换为的内容；默认 null=删除（等价替换为空串）
 ) {
     companion object {
         fun fromJson(o: JSONObject): PluginCommand = PluginCommand(
@@ -60,7 +60,7 @@ data class PluginCommand(
             prompt = o.optString("prompt", ""),
             reply = if (o.has("reply")) o.optString("reply") else null,
             regex = if (o.has("regex")) o.optString("regex") else null,
-            replaceWith = if (o.has("replaceWith")) o.optString("replaceWith") else null
+            replaceWith = if (o.has("replaceWith")) o.optString("replaceWith") else null,
         )
     }
 }
@@ -76,9 +76,9 @@ data class PluginConfigField(
     val label: String,
     val value: String,
     val secret: Boolean = false,
-    val multiLine: Boolean = false,  // 长文本（如自定义人格化指令）用多行输入框
-    val type: String = "string",     // string|text|number|bool|select|list|json
-    val options: List<String> = emptyList() // select/list 的候选项
+    val multiLine: Boolean = false, // 长文本（如自定义人格化指令）用多行输入框
+    val type: String = "string", // string|text|number|bool|select|list|json
+    val options: List<String> = emptyList(), // select/list 的候选项
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("key", key)
@@ -102,7 +102,7 @@ data class PluginConfigField(
                 secret = o.optBoolean("secret", false),
                 multiLine = o.optBoolean("multiLine", false),
                 type = o.optString("type", "string").ifBlank { "string" },
-                options = optList
+                options = optList,
             )
         }
     }
@@ -115,14 +115,14 @@ data class PluginInfo(
     val version: String,
     val author: String,
     val description: String,
-    val type: String,          // "prompt" | "webhook"
+    val type: String, // "prompt" | "webhook"
     val commands: List<PluginCommand>,
     val webhookUrl: String,
     val downloadUrl: String,
     val enabled: Boolean,
-    val trigger: String = "passive",  // always=总是(hook) / passive=被动(命令) / llm=LLM技能 / never=从不
+    val trigger: String = "passive", // always=总是(hook) / passive=被动(命令) / llm=LLM技能 / never=从不
     val config: List<PluginConfigField> = emptyList(),
-    val doc: String = ""       // 插件文档/使用说明（内置插件手写；AstrBot 转换插件取 README）
+    val doc: String = "", // 插件文档/使用说明（内置插件手写；AstrBot 转换插件取 README）
 ) {
     fun toJson(): String {
         val o = JSONObject()
@@ -162,8 +162,10 @@ data class PluginInfo(
         fun fromJson(o: JSONObject): PluginInfo {
             val commands = mutableListOf<PluginCommand>()
             val arr = o.optJSONArray("commands")
-            if (arr != null) for (i in 0 until arr.length()) {
-                commands.add(PluginCommand.fromJson(arr.optJSONObject(i)))
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    commands.add(PluginCommand.fromJson(arr.optJSONObject(i)))
+                }
             }
             return PluginInfo(
                 id = o.optString("id", "p" + System.currentTimeMillis()),
@@ -180,47 +182,53 @@ data class PluginInfo(
                 config = run {
                     val c = mutableListOf<PluginConfigField>()
                     val ca = o.optJSONArray("config")
-                    if (ca != null) for (i in 0 until ca.length()) {
-                        c.add(PluginConfigField.fromJson(ca.optJSONObject(i)))
+                    if (ca != null) {
+                        for (i in 0 until ca.length()) {
+                            c.add(PluginConfigField.fromJson(ca.optJSONObject(i)))
+                        }
                     }
                     c
                 },
-                doc = o.optString("doc", "")
+                doc = o.optString("doc", ""),
             )
         }
     }
 }
 
 /** 界面消息条目；session = "群/私聊:openid"，用于把记录按会话分组（旧记录为空） */
-data class ChatEntry(val from: String, val content: String, val time: Long,
-                     val session: String = "")
+data class ChatEntry(
+    val from: String,
+    val content: String,
+    val time: Long,
+    val session: String = "",
+)
 
 /** 日志条目 */
 data class LogLine(val level: String, val text: String, val time: Long)
 
 /** QQ 官方机器人收到的消息事件 */
 data class QqMessageEvent(
-    val kind: String,        // "c2c" | "group"
-    val openid: String,      // 群 group_openid 或 单聊 c2c_openid
+    val kind: String, // "c2c" | "group"
+    val openid: String, // 群 group_openid 或 单聊 c2c_openid
     val memberOpenid: String,
     val content: String,
     val msgId: String,
     val sender: String,
-    val atMe: Boolean = false,              // 本消息是否@了当前机器人（含多次@自己）
+    val atMe: Boolean = false, // 本消息是否@了当前机器人（含多次@自己）
     val atOpenids: List<String> = emptyList(), // 消息中@的所有 openid（含自己与他人）
     val imageUrls: List<String> = emptyList(), // v1.5.0 消息中的图片URL列表
-    val replyMsgId: String = ""              // v1.5.0 引用回复的消息ID
+    val replyMsgId: String = "", // v1.5.0 引用回复的消息ID
 )
 
 /** QQ 官方机器人按钮点击（INTERACTION_CREATE，type=11 消息按钮） */
 data class QqInteraction(
     val id: String,
-    val kind: String,          // "c2c" | "group"
-    val openid: String,        // 群 group_openid 或 单聊 user_openid
+    val kind: String, // "c2c" | "group"
+    val openid: String, // 群 group_openid 或 单聊 user_openid
     val memberOpenid: String,
     val buttonId: String,
     val buttonData: String,
-    val messageId: String
+    val messageId: String,
 )
 
 /** AI池条目（可复用于 消息总结/内心思考/知识库 等不同场景） */
@@ -231,7 +239,7 @@ data class AiPoolEntry(
     val apiKey: String,
     val model: String,
     val fallbackModel: String = "",
-    val idleModel: String = ""
+    val idleModel: String = "",
 ) {
     fun toJson(): String = org.json.JSONObject()
         .put("id", id)
@@ -253,7 +261,7 @@ data class AiPoolEntry(
                 apiKey = o.optString("apiKey", ""),
                 model = o.optString("model", ""),
                 fallbackModel = o.optString("fallbackModel", ""),
-                idleModel = o.optString("idleModel", "")
+                idleModel = o.optString("idleModel", ""),
             )
         }
     }
@@ -267,7 +275,7 @@ data class KnowledgeEntry(
     val source: String,
     val sourcePerson: String,
     val createdAt: Long,
-    val tags: String = ""
+    val tags: String = "",
 ) {
     fun toJson(): String = org.json.JSONObject()
         .put("id", id)
@@ -289,7 +297,7 @@ data class KnowledgeEntry(
                 source = o.optString("source", ""),
                 sourcePerson = o.optString("sourcePerson", ""),
                 createdAt = o.optLong("createdAt", System.currentTimeMillis()),
-                tags = o.optString("tags", "")
+                tags = o.optString("tags", ""),
             )
         }
     }

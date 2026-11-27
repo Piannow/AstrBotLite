@@ -49,7 +49,9 @@ class App : Application() {
         // WebView 免安装升级已彻底移除（1.7.224 止血：会 native 崩溃白屏；assets 已删）
         writeMarker("WebViewUpgrade REMOVED")
         step("WebView warmup") {
-            try { android.webkit.WebView(this) } catch (_: Throwable) {}
+            try {
+                android.webkit.WebView(this)
+            } catch (_: Throwable) {}
         }
         writeMarker("App.onCreate() completed")
     }
@@ -147,7 +149,9 @@ class App : Application() {
             android.util.Log.e("AstrBotLite", text)
             // Bug #2 修复：prev==null（无上级 handler）时直接杀进程，防止 App 僵死但用户看不见崩溃提示。
             if (prev != null) {
-                try { prev.uncaughtException(t, e) } catch (_: Throwable) {}
+                try {
+                    prev.uncaughtException(t, e)
+                } catch (_: Throwable) {}
             } else {
                 android.os.Process.killProcess(android.os.Process.myPid())
             }
@@ -156,12 +160,14 @@ class App : Application() {
 
     private fun writeCrashDirect(text: String) {
         val base = getExternalFilesDir(null) ?: filesDir
-        try { java.io.File(base, "crash_last.txt").writeText(text) } catch (_: Throwable) {}
+        try {
+            java.io.File(base, "crash_last.txt").writeText(text)
+        } catch (_: Throwable) {}
         try {
             @Suppress("DEPRECATION")
             val dl = java.io.File(
                 android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
-                "AstrBotLite-crash.txt"
+                "AstrBotLite-crash.txt",
             )
             dl.writeText(text)
         } catch (_: Throwable) {}
@@ -173,11 +179,15 @@ class App : Application() {
             val chId = "crash_log"
             if (android.os.Build.VERSION.SDK_INT >= 26) {
                 nm.createNotificationChannel(
-                    android.app.NotificationChannel(chId, "崩溃日志", android.app.NotificationManager.IMPORTANCE_HIGH)
+                    android.app.NotificationChannel(chId, "崩溃日志", android.app.NotificationManager.IMPORTANCE_HIGH),
                 )
             }
-            val b = if (android.os.Build.VERSION.SDK_INT >= 26) android.app.Notification.Builder(this, chId)
-            else @Suppress("DEPRECATION") android.app.Notification.Builder(this)
+            val b = if (android.os.Build.VERSION.SDK_INT >= 26) {
+                android.app.Notification.Builder(this, chId)
+            } else {
+                @Suppress("DEPRECATION")
+                android.app.Notification.Builder(this)
+            }
             b.setSmallIcon(android.R.drawable.stat_notify_error)
                 .setContentTitle("AstrBotLite 启动出错")
                 .setStyle(android.app.Notification.BigTextStyle().bigText(text.take(2500)))

@@ -46,18 +46,23 @@ class ChatHistoryActivity : Activity() {
         }
 
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        top.addView(Button(this).apply {
-            text = "返回"
-            setOnClickListener { finish() }
-        })
-        top.addView(TextView(this).apply {
-            text = "聊天记录"
-            textSize = 18f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(resources.getColor(R.color.textMain, null))
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12), 0, 0, 0)
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        top.addView(
+            Button(this).apply {
+                text = "返回"
+                setOnClickListener { finish() }
+            },
+        )
+        top.addView(
+            TextView(this).apply {
+                text = "聊天记录"
+                textSize = 18f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(resources.getColor(R.color.textMain, null))
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), 0, 0, 0)
+            },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+        )
         root.addView(top)
 
         tvSummary = TextView(this).apply {
@@ -66,35 +71,47 @@ class ChatHistoryActivity : Activity() {
             setPadding(0, dp(6), 0, dp(2))
         }
         root.addView(tvSummary)
-        root.addView(TextView(this).apply {
-            text = "存于：" + ChatStore.path()
-            textSize = 10f
-            setTextColor(resources.getColor(R.color.textSub, null))
-            setTextIsSelectable(true)
-            setPadding(0, 0, 0, dp(6))
-        })
+        root.addView(
+            TextView(this).apply {
+                text = "存于：" + ChatStore.path()
+                textSize = 10f
+                setTextColor(resources.getColor(R.color.textSub, null))
+                setTextIsSelectable(true)
+                setPadding(0, 0, 0, dp(6))
+            },
+        )
 
         val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        actions.addView(Button(this).apply {
-            text = "全选"
-            setOnClickListener { toggleSelectAll() }
-        })
+        actions.addView(
+            Button(this).apply {
+                text = "全选"
+                setOnClickListener { toggleSelectAll() }
+            },
+        )
         btnDelete = Button(this).apply {
             text = "删除选中 (0)"
             setOnClickListener { confirmDelete() }
         }
         actions.addView(btnDelete)
-        actions.addView(Button(this).apply {
-            text = "刷新"
-            setOnClickListener { reload() }
-        })
+        actions.addView(
+            Button(this).apply {
+                text = "刷新"
+                setOnClickListener { reload() }
+            },
+        )
         root.addView(actions)
 
         val scroll = ScrollView(this)
         listCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         scroll.addView(listCol)
-        root.addView(scroll, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        root.addView(
+            scroll,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
 
         setContentView(root)
         DpadFocus.apply(root)
@@ -116,12 +133,14 @@ class ChatHistoryActivity : Activity() {
         tvSummary.text = "共 ${ordered.size} 个会话 / ${entries.size} 条消息"
         updateDeleteBtn()
         if (ordered.isEmpty()) {
-            listCol.addView(TextView(this).apply {
-                text = "暂无聊天记录"
-                textSize = 14f
-                setTextColor(resources.getColor(R.color.textSub, null))
-                setPadding(0, dp(20), 0, 0)
-            })
+            listCol.addView(
+                TextView(this).apply {
+                    text = "暂无聊天记录"
+                    textSize = 14f
+                    setTextColor(resources.getColor(R.color.textSub, null))
+                    setPadding(0, dp(20), 0, 0)
+                },
+            )
             return
         }
         for ((key, list) in ordered) {
@@ -152,29 +171,37 @@ class ChatHistoryActivity : Activity() {
             setPadding(dp(4), 0, dp(8), 0)
         }
         val last = list.maxByOrNull { it.time }
-        info.addView(TextView(this).apply {
-            text = sessionLabel(key)
-            textSize = 14f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(resources.getColor(R.color.textMain, null))
-        })
-        info.addView(TextView(this).apply {
-            text = "${list.size} 条 · 最后 " + fmt.format(Date(last?.time ?: 0L))
-            textSize = 11f
-            setTextColor(resources.getColor(R.color.textSub, null))
-            setPadding(0, dp(2), 0, dp(2))
-        })
-        info.addView(TextView(this).apply {
-            text = (last?.content ?: "").replace("\n", " ").take(60)
-            textSize = 11f
-            setTextColor(resources.getColor(R.color.textSub, null))
-        })
+        info.addView(
+            TextView(this).apply {
+                text = sessionLabel(key)
+                textSize = 14f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(resources.getColor(R.color.textMain, null))
+            },
+        )
+        info.addView(
+            TextView(this).apply {
+                text = "${list.size} 条 · 最后 " + fmt.format(Date(last?.time ?: 0L))
+                textSize = 11f
+                setTextColor(resources.getColor(R.color.textSub, null))
+                setPadding(0, dp(2), 0, dp(2))
+            },
+        )
+        info.addView(
+            TextView(this).apply {
+                text = (last?.content ?: "").replace("\n", " ").take(60)
+                textSize = 11f
+                setTextColor(resources.getColor(R.color.textSub, null))
+            },
+        )
         row.addView(info, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
 
-        row.addView(Button(this).apply {
-            text = "查看/编辑"
-            setOnClickListener { openDetail(key) }
-        })
+        row.addView(
+            Button(this).apply {
+                text = "查看/编辑"
+                setOnClickListener { openDetail(key) }
+            },
+        )
         return row
     }
 
@@ -205,15 +232,20 @@ class ChatHistoryActivity : Activity() {
                 setPadding(0, dp(6), 0, dp(4))
             }
             col.addView(contentView)
-            col.addView(Button(this).apply {
-                text = "编辑这条"
-                setOnClickListener {
-                    editEntry(idx, e) { newText ->
-                        contentView.text = "[${fmt.format(Date(e.time))}] [$who] $newText"
+            col.addView(
+                Button(this).apply {
+                    text = "编辑这条"
+                    setOnClickListener {
+                        editEntry(idx, e) { newText ->
+                            contentView.text = "[${fmt.format(Date(e.time))}] [$who] $newText"
+                        }
                     }
-                }
-            }, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+                },
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
         }
         AlertDialog.Builder(this)
             .setTitle(sessionLabel(key) + "（" + items.size + " 条）")
@@ -238,14 +270,17 @@ class ChatHistoryActivity : Activity() {
                 val newText = et.text.toString()
                 ChatStore.mutate { list ->
                     val cur = list.getOrNull(index)
-                    if (cur != null && cur.time == snapshot.time &&
-                        cur.from == snapshot.from && cur.session == snapshot.session
+                    if (cur != null &&
+                        cur.time == snapshot.time &&
+                        cur.from == snapshot.from &&
+                        cur.session == snapshot.session
                     ) {
                         list[index] = cur.copy(content = newText)
                     } else {
                         // 索引漂移（期间发生过裁剪）时按时间+来源+会话找回
                         val j = list.indexOfFirst {
-                            it.time == snapshot.time && it.from == snapshot.from &&
+                            it.time == snapshot.time &&
+                                it.from == snapshot.from &&
                                 it.session == snapshot.session
                         }
                         if (j >= 0) list[j] = list[j].copy(content = newText)
@@ -262,7 +297,9 @@ class ChatHistoryActivity : Activity() {
 
     private fun toggleSelectAll() {
         val keys = entries.map { it.session }.toSet()
-        if (selected.containsAll(keys)) selected.clear() else {
+        if (selected.containsAll(keys)) {
+            selected.clear()
+        } else {
             selected.clear()
             selected.addAll(keys)
         }

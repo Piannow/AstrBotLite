@@ -17,7 +17,7 @@ data class AstrBotMarketEntry(
     val version: String,
     val desc: String,
     val repo: String,
-    val downloadUrl: String
+    val downloadUrl: String,
 ) {
     /** 展示名：优先用 AstrBot 里的插件名（display_name），没有才退回包体名 */
     val shownName: String get() = displayName.ifBlank { name }
@@ -44,6 +44,7 @@ object PluginConverter {
     /** 市场缓存目录（PluginManager.init 注入）；无目录时退化为纯在线拉取 */
     @Volatile
     private var cacheDir: java.io.File? = null
+
     @Volatile
     private var marketRefreshing = false
 
@@ -59,19 +60,19 @@ object PluginConverter {
     }
 
     /** 短超时单地址拉取；失败返回 null（不抛） */
-    private fun downloadMarket(url: String): String? {
-        return try {
-            val resp = marketHttp.newCall(
-                Request.Builder().url(url).header("User-Agent", "AstrBotLite/1.0").build()
-            ).execute()
-            if (!resp.isSuccessful) {
-                Logs.warn("市场 HTTP ${resp.code}: ${url.take(80)}")
-                null
-            } else resp.body?.string()
-        } catch (e: Exception) {
-            Logs.warn("市场拉取失败 ${url.take(80)}: ${e.message}")
+    private fun downloadMarket(url: String): String? = try {
+        val resp = marketHttp.newCall(
+            Request.Builder().url(url).header("User-Agent", "AstrBotLite/1.0").build(),
+        ).execute()
+        if (!resp.isSuccessful) {
+            Logs.warn("市场 HTTP ${resp.code}: ${url.take(80)}")
             null
+        } else {
+            resp.body?.string()
         }
+    } catch (e: Exception) {
+        Logs.warn("市场拉取失败 ${url.take(80)}: ${e.message}")
+        null
     }
 
     /**
@@ -91,7 +92,11 @@ object PluginConverter {
         val cache = cacheDir?.let { java.io.File(it, "astrbot_market_cache.json") }
         // ① 缓存优先：有内容即秒开；超过 5 分钟视为陈旧 → 后台刷新（不阻塞本次）
         if (cache != null && cache.isFile) {
-            val text = try { cache.readText() } catch (_: Exception) { "" }
+            val text = try {
+                cache.readText()
+            } catch (_: Exception) {
+                ""
+            }
             if (text.isNotBlank() && parseAstrBotMarket(text).isNotEmpty()) {
                 val stale = System.currentTimeMillis() - cache.lastModified() > 5 * 60_000L
                 if (stale && !marketRefreshing) {
@@ -110,7 +115,11 @@ object PluginConverter {
                         } finally {
                             marketRefreshing = false
                         }
-                    }.apply { isDaemon = true; name = "market-refresh"; start() }
+                    }.apply {
+                        isDaemon = true
+                        name = "market-refresh"
+                        start()
+                    }
                 }
                 Logs.info("AstrBot 市场（本地缓存${if (stale) "·后台刷新中" else "·新鲜"}）")
                 return text
@@ -120,7 +129,9 @@ object PluginConverter {
         for (u in distinctUrls) {
             val text = downloadMarket(u) ?: continue
             if (parseAstrBotMarket(text).isNotEmpty()) {
-                try { cache?.writeText(text) } catch (_: Exception) {
+                try {
+                    cache?.writeText(text)
+                } catch (_: Exception) {
                 }
                 Logs.info("AstrBot 市场加载成功：${u.take(80)}")
                 return text
@@ -136,7 +147,7 @@ object PluginConverter {
     fun downloadSingle(
         url: String,
         shouldCancel: () -> Boolean = { false },
-        onProgress: ((Long, Long) -> Unit)? = null
+        onProgress: ((Long, Long) -> Unit)? = null,
     ): ByteArray? {
         if (shouldCancel()) return null
         val bytes = download(url, onProgress) ?: return null
@@ -193,7 +204,7 @@ object PluginConverter {
         GhMirror("gh-proxy.com", "https://gh-proxy.com/"),
         GhMirror("ghfast.top", "https://ghfast.top/"),
         GhMirror("ghproxy.cn", "https://ghproxy.cn/"),
-        GhMirror("github.moeyy.xyz", "https://github.moeyy.xyz/")
+        GhMirror("github.moeyy.xyz", "https://github.moeyy.xyz/"),
     )
 
     /** 给 GitHub 直链套镜像前缀（"直连"/未知名 = 原样返回） */
@@ -208,7 +219,7 @@ object PluginConverter {
         return try {
             val t0 = System.currentTimeMillis()
             val resp = http.newCall(
-                Request.Builder().url(target).header("User-Agent", "Mozilla/5.0").build()
+                Request.Builder().url(target).header("User-Agent", "Mozilla/5.0").build(),
             ).execute()
             resp.close()
             System.currentTimeMillis() - t0
@@ -255,9 +266,13 @@ object PluginConverter {
                     val repo = repoMatch.groupValues[2].removeSuffix(".git")
                     listOf(
                         "https://github.com/$owner/$repo/archive/refs/heads/master.zip",
-                        "https://github.com/$owner/$repo/archive/refs/heads/main.zip"
+                        "https://github.com/$owner/$repo/archive/refs/heads/main.zip",
                     )
-                } else if (u.startsWith("http")) listOf(u) else return emptyList()
+                } else if (u.startsWith("http")) {
+                    listOf(u)
+                } else {
+                    return emptyList()
+                }
             }
         }
         // 手动：只用所选镜像（空 = 直连）
@@ -270,7 +285,7 @@ object PluginConverter {
         input: String,
         onProgress: ((Long, Long) -> Unit)? = null,
         shouldCancel: () -> Boolean = { false },
-        onSourceChange: ((String) -> Unit)? = null
+        onSourceChange: ((String) -> Unit)? = null,
     ): ByteArray? {
         val cands = ghCandidates(input)
         if (cands.isEmpty()) {
@@ -297,7 +312,7 @@ object PluginConverter {
         onProgress: ((Long, Long) -> Unit)? = null,
         sourceLabel: String = "",
         shouldCancel: () -> Boolean = { false },
-        onSourceChange: ((String) -> Unit)? = null
+        onSourceChange: ((String) -> Unit)? = null,
     ): ByteArray? {
         val tag = if (sourceLabel.isBlank()) "" else "[$sourceLabel] "
         if (url.contains("github.com")) {
@@ -325,15 +340,17 @@ object PluginConverter {
             val key = it.next()
             if (key == "\$meta") continue
             val o = root.optJSONObject(key) ?: continue
-            list.add(AstrBotMarketEntry(
-                name = o.optString("name").ifBlank { key.substringAfterLast('/') },
-                displayName = o.optString("display_name"),
-                author = o.optString("author", ""),
-                version = o.optString("version", ""),
-                desc = o.optString("desc").ifBlank { o.optString("short_desc") },
-                repo = o.optString("repo", ""),
-                downloadUrl = o.optString("download_url", "")
-            ))
+            list.add(
+                AstrBotMarketEntry(
+                    name = o.optString("name").ifBlank { key.substringAfterLast('/') },
+                    displayName = o.optString("display_name"),
+                    author = o.optString("author", ""),
+                    version = o.optString("version", ""),
+                    desc = o.optString("desc").ifBlank { o.optString("short_desc") },
+                    repo = o.optString("repo", ""),
+                    downloadUrl = o.optString("download_url", ""),
+                ),
+            )
         }
         if (list.isNotEmpty()) return list
         return parseArray(text)
@@ -348,15 +365,17 @@ object PluginConverter {
         }
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue
-            list.add(AstrBotMarketEntry(
-                name = o.optString("name"),
-                displayName = o.optString("display_name"),
-                author = o.optString("author", ""),
-                version = o.optString("version", ""),
-                desc = o.optString("desc").ifBlank { o.optString("description") },
-                repo = o.optString("repo", ""),
-                downloadUrl = o.optString("zip_path").ifBlank { o.optString("download_url") }
-            ))
+            list.add(
+                AstrBotMarketEntry(
+                    name = o.optString("name"),
+                    displayName = o.optString("display_name"),
+                    author = o.optString("author", ""),
+                    version = o.optString("version", ""),
+                    desc = o.optString("desc").ifBlank { o.optString("description") },
+                    repo = o.optString("repo", ""),
+                    downloadUrl = o.optString("zip_path").ifBlank { o.optString("download_url") },
+                ),
+            )
         }
         return list
     }
@@ -369,7 +388,7 @@ object PluginConverter {
     fun convertZip(bytes: ByteArray, lenient: Boolean = false): ConvResult {
         val files = unzipText(
             bytes,
-            listOf("main.py", "plugin.py", "metadata.yaml", "metadata.yml", "_conf_schema.json", "plugin.json", "readme.md", "readme.txt", "constants.py")
+            listOf("main.py", "plugin.py", "metadata.yaml", "metadata.yml", "_conf_schema.json", "plugin.json", "readme.md", "readme.txt", "constants.py"),
         )
         val readme = (files["readme.md"] ?: files["readme.txt"])?.trim()
         val confSchema = files["_conf_schema.json"]?.trim()
@@ -416,14 +435,12 @@ object PluginConverter {
     }
 
     /** 给现成 plugin.json 附加 doc 字段（README） */
-    private fun withDoc(json: String, doc: String): String {
-        return try {
-            val o = JSONObject(json)
-            o.put("doc", doc)
-            o.toString(2)
-        } catch (_: Exception) {
-            json
-        }
+    private fun withDoc(json: String, doc: String): String = try {
+        val o = JSONObject(json)
+        o.put("doc", doc)
+        o.toString(2)
+    } catch (_: Exception) {
+        json
     }
 
     /** 把 README（markdown/HTML 混合）清洗成给用户看的纯文本：去 HTML/图片/代码块/表格符号，保留正文 */
@@ -444,7 +461,8 @@ object PluginConverter {
             val cells = raw.split("|").map { it.trim() }.filter { it.isNotEmpty() }
             when {
                 // 表格分隔行 |---|---| → 删除
-                raw.contains("|") && cells.isNotEmpty() &&
+                raw.contains("|") &&
+                    cells.isNotEmpty() &&
                     cells.all { it.matches(Regex("^[\\-:\\s]*$")) && it.contains("-") } -> ""
                 // 表格数据行 | a | b | → a：b
                 raw.contains("|") -> cells.joinToString("：")
@@ -456,8 +474,8 @@ object PluginConverter {
             }
         }
         var out = lines.joinToString("\n")
-        out = out.replace(Regex("[ \\t]+\\n"), "\n")   // 去掉行尾空白
-        out = out.replace(Regex("\\n{3,}"), "\n\n")    // 压缩多余空行
+        out = out.replace(Regex("[ \\t]+\\n"), "\n") // 去掉行尾空白
+        out = out.replace(Regex("\\n{3,}"), "\n\n") // 压缩多余空行
         return out.trim()
     }
 
@@ -472,7 +490,7 @@ object PluginConverter {
         imageUrls: List<String> = emptyList(),
         constantsPy: String = "",
         assets: Map<String, ByteArray> = emptyMap(),
-        lenient: Boolean = false
+        lenient: Boolean = false,
     ): ConvResult {
         val log = mutableListOf<String>()
         if (!lenient) {
@@ -574,7 +592,7 @@ object PluginConverter {
                 commands[0] = Triple(
                     commands[0].first,
                     "回复请保持纯净：不要在括号或其他描述性标签内输出心声、动作或神态描写，直接输出正文。",
-                    commands[0].third
+                    commands[0].third,
                 )
             }
         }
@@ -586,15 +604,23 @@ object PluginConverter {
         val looksImage = !lenient && (imageUrls.isNotEmpty() || IMAGE_PLUGIN_KEYWORDS.containsMatchIn(mainPy))
         val configFields = meta.configFields.toMutableList()
         if (looksImage && configFields.none { it.key == "imageUrl" || it.key == "images" }) {
-            configFields.add(PluginConfigField(
-                key = "imageUrl",
-                label = "图片直链（一行一个或用逗号分隔；机器人随机下载并作为图片消息发送，不限数量）",
-                value = imageUrls.joinToString("\n"),
-                secret = false,
-                multiLine = true
-            ))
+            configFields.add(
+                PluginConfigField(
+                    key = "imageUrl",
+                    label = "图片直链（一行一个或用逗号分隔；机器人随机下载并作为图片消息发送，不限数量）",
+                    value = imageUrls.joinToString("\n"),
+                    secret = false,
+                    multiLine = true,
+                ),
+            )
         }
-        val pluginType = if (lenient) "python" else if (looksImage) "image" else "prompt"
+        val pluginType = if (lenient) {
+            "python"
+        } else if (looksImage) {
+            "image"
+        } else {
+            "prompt"
+        }
         if (looksImage) {
             log.add(if (imageUrls.isNotEmpty()) "✅ 已自动抽取 ${imageUrls.size} 条图片直链，配成「发图」插件（image 型，不限数量）" else "✅ 识别为发图插件，已预留「图片直链」配置项，请在配置中填入直链")
         }
@@ -621,15 +647,21 @@ object PluginConverter {
         while (i < src.length) {
             val ch = src[i]
             if (quote != null) {
-                if (esc) esc = false
-                else if (ch == '\\') esc = true
-                else if (ch == quote) quote = null
-            } else when (ch) {
-                '\'', '"' -> quote = ch
-                '(' -> depth++
-                ')' -> {
-                    depth--
-                    if (depth == 0) return src.substring(openIdx + 1, i) to i
+                if (esc) {
+                    esc = false
+                } else if (ch == '\\') {
+                    esc = true
+                } else if (ch == quote) {
+                    quote = null
+                }
+            } else {
+                when (ch) {
+                    '\'', '"' -> quote = ch
+                    '(' -> depth++
+                    ')' -> {
+                        depth--
+                        if (depth == 0) return src.substring(openIdx + 1, i) to i
+                    }
                 }
             }
             i++
@@ -637,8 +669,7 @@ object PluginConverter {
         return null
     }
 
-    private fun firstStringLiteral(args: String): String? =
-        Regex("""^\s*f?(['"])((?:\\.|(?!\1).)*)\1""").find(args)?.groupValues?.get(2)
+    private fun firstStringLiteral(args: String): String? = Regex("""^\s*f?(['"])((?:\\.|(?!\1).)*)\1""").find(args)?.groupValues?.get(2)
 
     /** 命令装饰器的别名：位置参数（第二个起）与 alias={...}/aliases=[...] 关键字参数 */
     private fun decoratorAliases(args: String): List<String> {
@@ -646,8 +677,11 @@ object PluginConverter {
         var first = true
         for (m in Regex("""f?(['"])((?:\\.|(?!\1).)*)\1""").findAll(args)) {
             val seg = args.substring(0, m.range.first).substringAfterLast(',').substringAfterLast('(').trim()
-            if (seg.endsWith("=")) continue          // 关键字参数值，稍后按关键字单独处理
-            if (first) { first = false; continue }   // 第一个是命令名
+            if (seg.endsWith("=")) continue // 关键字参数值，稍后按关键字单独处理
+            if (first) {
+                first = false
+                continue
+            } // 第一个是命令名
             out.add(unescape(m.groupValues[2]))
         }
         val kw = Regex("""\baliases?\s*=\s*([{\[])([\s\S]*?)\1""").find(args)
@@ -669,7 +703,7 @@ object PluginConverter {
         mainPy: String,
         seen: MutableSet<String>,
         pluginName: String,
-        log: MutableList<String>
+        log: MutableList<String>,
     ): List<Triple<String, String, String>> {
         val out = mutableListOf<Triple<String, String, String>>()
         // ① 命令组：装饰后的函数名就是后续 @<name>.command 的前缀
@@ -728,8 +762,7 @@ object PluginConverter {
         return Triple(cmdMatch, aiPrompt(cmdMatch, desc, pluginName), "")
     }
 
-    private fun aiPrompt(cmd: String, desc: String, pluginName: String): String =
-        "当用户输入 $cmd 时：${desc.ifBlank { "执行插件 ${pluginName.ifBlank { "未知" }} 的功能" }}。请根据命令意图给出有帮助的回答。"
+    private fun aiPrompt(cmd: String, desc: String, pluginName: String): String = "当用户输入 $cmd 时：${desc.ifBlank { "执行插件 ${pluginName.ifBlank { "未知" }} 的功能" }}。请根据命令意图给出有帮助的回答。"
 
     private fun methodBlock(src: String, handler: String): String {
         val re = Regex("""(?:def|async def)\s+${Regex.escape(handler)}\s*\([^)]*\)\s*:""")
@@ -742,7 +775,10 @@ object PluginConverter {
         val sb = StringBuilder()
         for (i in firstLineIdx + 1 until lines.size) {
             val l = lines[i]
-            if (l.isBlank()) { sb.append(l).append('\n'); continue }
+            if (l.isBlank()) {
+                sb.append(l).append('\n')
+                continue
+            }
             if (l.takeWhile { it == ' ' || it == '\t' }.length <= bodyIndent) break
             sb.append(l).append('\n')
         }
@@ -829,8 +865,9 @@ object PluginConverter {
     private fun detectUnconvertible(mainPy: String): String? {
         // 相对导入（from .x import / import .x）→ 多文件包，Kotlin 无法还原兄弟模块
         val relImport = Regex("""\bfrom\s+\.{1,2}\s|\bimport\s+\.""")
-        if (relImport.containsMatchIn(mainPy))
+        if (relImport.containsMatchIn(mainPy)) {
             return "使用了多文件相对导入（from .x import），Lite 无法运行多文件 Python 包"
+        }
         return null
     }
 
@@ -838,12 +875,12 @@ object PluginConverter {
     /** 本地渲染插件特征：底图相对路径 + 4 个整数的文本区域 + 有图片输出 + 至少一个命令 */
     private data class RenderSpec(
         val commandNames: List<Pair<String, List<String>>>, // 命令名 → 别名
-        val templateRel: String,   // 底图相对路径（如 assets/character/base.png）
-        val fontRel: String?,      // 字体相对路径（可空）
-        val region: String,        // 文本区域 "x,y,w,h"
-        val textColor: String,     // "r,g,b,a"
-        val bracketColor: String,  // "r,g,b,a"
-        val maxFontHeight: String   // 像素
+        val templateRel: String, // 底图相对路径（如 assets/character/base.png）
+        val fontRel: String?, // 字体相对路径（可空）
+        val region: String, // 文本区域 "x,y,w,h"
+        val textColor: String, // "r,g,b,a"
+        val bracketColor: String, // "r,g,b,a"
+        val maxFontHeight: String, // 像素
     )
 
     /** 判定是否为本地渲染插件：主文件输出图片 + constants 里能解析出底图与文本区。命中返回 RenderSpec，否则 null */
@@ -884,7 +921,9 @@ object PluginConverter {
                             ?.let { resolveFString(it, consts) } ?: tok.trim()
                     }
                     .filter { it.isNotBlank() }
-            } else emptyList()
+            } else {
+                emptyList()
+            }
             if (seen.add(first)) out.add(first to aliases)
         }
         return out
@@ -893,7 +932,7 @@ object PluginConverter {
     /** 解析 f-string 里的 {NAME} 占位：用 constants 里的字符串常量回填，剩余无法解析的 {} 段直接去掉 */
     private fun resolveFString(body: String, consts: Map<String, String>): String {
         var s = body
-        for ((k, v) in consts) s = s.replace("{${k}}", v)
+        for ((k, v) in consts) s = s.replace("{$k}", v)
         return Regex("\\{[^}]*}").replace(s, "")
     }
 
@@ -913,12 +952,10 @@ object PluginConverter {
     }
 
     /** 把表达式里的所有引号字面量用 / 连接（还原 Python 的 pathlib ` / ` 拼接为普通相对路径） */
-    private fun quotedPath(rhs: String): String =
-        Regex("""(['"])([^'"]+)\1""").findAll(rhs).map { it.groupValues[2] }.joinToString("/")
+    private fun quotedPath(rhs: String): String = Regex("""(['"])([^'"]+)\1""").findAll(rhs).map { it.groupValues[2] }.joinToString("/")
 
     /** 把表达式里的所有整数用 , 连接（还原 Python 的 (a, b, c, d) 元组为 CSV） */
-    private fun tupleInts(rhs: String): String =
-        Regex("""-?\d+""").findAll(rhs).map { it.value }.joinToString(",")
+    private fun tupleInts(rhs: String): String = Regex("""-?\d+""").findAll(rhs).map { it.value }.joinToString(",")
 
     /** 生成 render 型 plugin.json：命令（match，无 prompt/reply）+ 渲染配置（底图/字体/区域/颜色/最大字高） */
     private fun buildRenderJson(spec: RenderSpec, meta: Meta, readme: String?): String {
@@ -990,11 +1027,11 @@ object PluginConverter {
     /** 判定是否为联网文生图插件：源码含“出图”特征词，且有外部调用/密钥痕迹（避免误判纯图片发送插件） */
     private val T2I_GEN_SIGNAL = Regex(
         """images/generations|gpt-image|gpt_image|dall[e·]|\bdalle\b|stable.?diffusion|\btxt2img\b|text2image|text-to-image|文生图|AI绘画|aigenimage|comfyui""",
-        RegexOption.IGNORE_CASE
+        RegexOption.IGNORE_CASE,
     )
     private val T2I_EXT_SIGNAL = Regex(
         """requests\.(post|get)|httpx\.|aiohttp\.|openai|api_?key|apikey|api-key|\bBearer\b|/v1/|/v3/|https?://""",
-        RegexOption.IGNORE_CASE
+        RegexOption.IGNORE_CASE,
     )
 
     private fun detectText2Image(mainPy: String, constantsPy: String): Boolean {
@@ -1036,11 +1073,11 @@ object PluginConverter {
     private val LOCAL_IMG_EXTS = setOf(".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
     private val LOCAL_SEND_SIGNAL = Regex(
         """image_result|send_image|表情包|梗图|表情|\bsticker\b|send_picture|random""",
-        RegexOption.IGNORE_CASE
+        RegexOption.IGNORE_CASE,
     )
     private val LOCAL_RANDOM_SIGNAL = Regex(
         """random\.(choice|randint|sample)|choices?\(|random\.sample|shuffle\(""",
-        RegexOption.IGNORE_CASE
+        RegexOption.IGNORE_CASE,
     )
 
     /** 判定是否为自带图片插件：包内带多张本地图片（随机发一张），或单张但源码有“发送+随机”痕迹 */
@@ -1074,7 +1111,6 @@ object PluginConverter {
         return o.toString(2)
     }
 
-
     private fun toField(map: Map<String, String>): PluginConfigField {
         val key = map["key"] ?: "config_${System.currentTimeMillis()}"
         val type = map["type"]?.lowercase() ?: "text"
@@ -1082,7 +1118,7 @@ object PluginConverter {
             key = key,
             label = map["name"] ?: key,
             value = map["default"] ?: "",
-            secret = type.contains("pass") || type.contains("secret") || type.contains("token") || type.contains("key")
+            secret = type.contains("pass") || type.contains("secret") || type.contains("token") || type.contains("key"),
         )
     }
 
@@ -1153,15 +1189,28 @@ object PluginConverter {
         val defaultRaw = v.opt("default")
         // options 候选（官方：提供下拉列表可选项）
         val opts = v.optJSONArray("options")
-        val options = if (opts != null) (0 until opts.length()).mapNotNull { i ->
-            opts.optString(i).takeIf { it.isNotBlank() }
-        } else emptyList()
-        val secret = type.contains("secret") || v.optBoolean("secret", false) ||
-            key.contains("secret", true) || key.contains("password", true) || key.contains("token", true)
+        val options = if (opts != null) {
+            (0 until opts.length()).mapNotNull { i ->
+                opts.optString(i).takeIf { it.isNotBlank() }
+            }
+        } else {
+            emptyList()
+        }
+        val secret = type.contains("secret") ||
+            v.optBoolean("secret", false) ||
+            key.contains("secret", true) ||
+            key.contains("password", true) ||
+            key.contains("token", true)
         // 按官方类型映射到 Lite 控件类型（1.7.87 类型化转换）
         val (ftype, defaultStr) = when {
             type == "bool" || type == "boolean" ->
-                "bool" to (when (defaultRaw) { true -> "true"; false -> "false"; else -> "false" })
+                "bool" to (
+                    when (defaultRaw) {
+                        true -> "true"
+                        false -> "false"
+                        else -> "false"
+                    }
+                    )
             type == "int" || type == "float" || type == "double" || type == "number" ->
                 "number" to (defaultRaw?.toString() ?: if (type == "int") "0" else "0.0")
             type == "string" && options.isNotEmpty() ->
@@ -1177,7 +1226,7 @@ object PluginConverter {
         }
         val multiLine = ftype == "text" || (ftype == "string" && defaultStr.length > 40)
         meta.configFields.add(
-            PluginConfigField(key, label, defaultStr, secret, multiLine, ftype, options)
+            PluginConfigField(key, label, defaultStr, secret, multiLine, ftype, options),
         )
     }
 
@@ -1187,7 +1236,7 @@ object PluginConverter {
             "on_waiting_llm_request", "on_agent_begin", "on_agent_done",
             "on_using_llm_tool", "on_llm_tool_respond", "after_message_sent",
             "on_plugin_error", "event_message_type", "platform_adapter_type",
-            "on_message", "on_group_message", "on_c2c_message", "def hook"
+            "on_message", "on_group_message", "on_c2c_message", "def hook",
         )
         if (hookPatterns.any { mainPy.contains(it) }) {
             log.add("检测到 hook 处理器，触发方式默认：总是触发(hook)")
@@ -1277,20 +1326,20 @@ object PluginConverter {
         return out
     }
 
-    private fun unescape(s: String): String =
-        s.replace("\\n", "\n").replace("\\t", "\t").replace("\\\"", "\"").replace("\\\\", "\\")
+    private fun unescape(s: String): String = s.replace("\\n", "\n").replace("\\t", "\t").replace("\\\"", "\"").replace("\\\\", "\\")
 
     // ---------------- 发图/拉图：图片直链自动抽取 ----------------
     /** 图片直链：http(s) 且以位图扩展名结尾（可带 ?query）；不限数量。
      *  故意排除 svg（矢量 XML，QQ 富媒体接口无法发送会 400，且会把 shields.io 等徽章链接误当图片） */
     private val IMAGE_URL_RE = Regex(
         """https?://[^\s"'\\)\(\]\[,<>;`]+?\.(?:png|jpe?g|gif|webp|bmp|tiff?)(?:\?[^\s"'\\)\(\]\[,<>;`]*)?""",
-        RegexOption.IGNORE_CASE
+        RegexOption.IGNORE_CASE,
     )
+
     /** 识别“图片类”插件的关键词（命中其一即视为发图插件，即便暂未抽到直链也预留 imageUrl 配置） */
     private val IMAGE_PLUGIN_KEYWORDS = Regex(
         """image_result|send_image|图片|表情包|表情|奶龙|nailong|\bmeme\b|sticker|image_url|img_url|IMAGE_LIST""",
-        RegexOption.IGNORE_CASE
+        RegexOption.IGNORE_CASE,
     )
     private val SCAN_TEXT_EXTS = setOf(".py", ".json", ".txt", ".md", ".csv", ".yaml", ".yml", ".conf", ".toml", ".list", ".in")
 
@@ -1304,7 +1353,11 @@ object PluginConverter {
                 if (!e.isDirectory) {
                     val nm = e.name.lowercase()
                     if (SCAN_TEXT_EXTS.any { nm.endsWith(it) }) {
-                        val content = try { zis.readBytes().toString(Charsets.UTF_8) } catch (_: Exception) { "" }
+                        val content = try {
+                            zis.readBytes().toString(Charsets.UTF_8)
+                        } catch (_: Exception) {
+                            ""
+                        }
                         for (m in IMAGE_URL_RE.findAll(content)) found.add(m.value)
                     }
                 }
@@ -1317,11 +1370,10 @@ object PluginConverter {
         return found.toList()
     }
 
-    private fun slug(name: String): String =
-        name.lowercase().replace(Regex("[^a-z0-9]"), "_").trim('_')
+    private fun slug(name: String): String = name.lowercase().replace(Regex("[^a-z0-9]"), "_").trim('_')
 
     private class Meta {
-        var name = ""        // 包体名（astrbot_plugin_xxx）
+        var name = "" // 包体名（astrbot_plugin_xxx）
         var displayName = "" // AstrBot 里展示的插件名（优先使用）
         var desc = ""
         var author = ""

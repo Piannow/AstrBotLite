@@ -95,7 +95,7 @@ object KnowledgeBase {
                 content = content.take(1000),
                 source = if (imageUrls.isNotEmpty()) "图文消息(${imageUrls.size}张图)" else "文字消息",
                 sourcePerson = sender,
-                createdAt = System.currentTimeMillis()
+                createdAt = System.currentTimeMillis(),
             )
             add(entry)
             Logs.info("[知识库] 新增条目「${title.take(30)}」（来源：$sender）")
@@ -109,10 +109,13 @@ object KnowledgeBase {
         try {
             val msgs = listOf(
                 ChatMsg("system", "你是新闻判断助手。判断以下消息是否为「新闻类型」消息（需要关注的新信息、事件、事实，而非日常闲聊/问候/表情/简单问答）。如果消息含多个图片且有上下文联系，更可能是新闻。只回复 是 或 否。"),
-                ChatMsg("user", buildString {
-                    append("消息内容：${content.take(500)}")
-                    if (imageUrls.isNotEmpty()) append("\n附带了${imageUrls.size}张图片")
-                })
+                ChatMsg(
+                    "user",
+                    buildString {
+                        append("消息内容：${content.take(500)}")
+                        if (imageUrls.isNotEmpty()) append("\n附带了${imageUrls.size}张图片")
+                    },
+                ),
             )
             val r = AiPool.chatFor("knowledge", msgs).trim().lowercase()
             return r.startsWith("是") || r.startsWith("yes")
@@ -126,7 +129,7 @@ object KnowledgeBase {
         try {
             val msgs = listOf(
                 ChatMsg("system", "你是标题提取助手。给下面这段消息生成一个简短精炼的标题（10字以内），只输出标题，不要解释。"),
-                ChatMsg("user", content.take(500))
+                ChatMsg("user", content.take(500)),
             )
             val t = AiPool.chatFor("knowledge", msgs).trim()
             if (t.isNotBlank() && t.length <= 30) return t

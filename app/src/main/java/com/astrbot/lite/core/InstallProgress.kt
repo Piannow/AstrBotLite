@@ -26,10 +26,15 @@ object InstallProgress {
     /** 单任务状态 */
     private class T(val title: String) {
         @Volatile var stage: String = "准备安装"
+
         @Volatile var percent: Int = 0
+
         @Volatile var active: Boolean = true
+
         @Volatile var cancelled: Boolean = false
+
         @Volatile var ok: Boolean = true
+
         @Volatile var message: String = ""
     }
 
@@ -60,7 +65,7 @@ object InstallProgress {
         val ok: Boolean,
         val isCancelled: Boolean,
         /** 所有任务 id（含状态摘要，点击切换用） */
-        val all: List<Pair<String, String>> // id to brief
+        val all: List<Pair<String, String>>, // id to brief
     )
 
     // ---------------- 生命周期 ----------------
@@ -161,7 +166,15 @@ object InstallProgress {
         val t = sel?.let { tasks[it] }
         val all = order.mapNotNull { oid ->
             val ot = tasks[oid] ?: return@mapNotNull null
-            oid to (if (ot.active) "⏳${ot.percent}% ${ot.stage}" else if (ot.ok) "✓ ${ot.title}" else "✗ ${ot.title}")
+            oid to (
+                if (ot.active) {
+                    "⏳${ot.percent}% ${ot.stage}"
+                } else if (ot.ok) {
+                    "✓ ${ot.title}"
+                } else {
+                    "✗ ${ot.title}"
+                }
+                )
         }
         return Snapshot(
             taskId = sel,
@@ -171,7 +184,7 @@ object InstallProgress {
             active = t?.active ?: false,
             ok = t?.ok ?: true,
             isCancelled = t?.cancelled ?: false,
-            all = all
+            all = all,
         )
     }
 

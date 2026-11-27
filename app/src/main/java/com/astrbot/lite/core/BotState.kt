@@ -4,7 +4,6 @@ import android.content.Context
 import org.json.JSONObject
 import java.io.File
 import java.util.Calendar
-import kotlin.random.Random
 
 /**
  * 机器人情绪系统（更接近人类）：
@@ -19,13 +18,27 @@ object BotState {
     private val NEGATIVE = listOf("难过", "低落", "烦躁", "生气", "委屈", "焦虑", "害怕", "疲惫", "麻木")
     private val COMPLEX = listOf("愧疚", "心疼", "害羞", "抱歉")
 
-    @Volatile private var mood = "平静"            // 主情绪
-    @Volatile private var intensity = 3            // 强度 1~5
-    @Volatile private var secondary: String? = null // 次要情绪（混合情绪）
-    @Volatile var lifeState = "闲着没事"           // 生活状态（注入用）
-    @Volatile private var dream: String? = null     // 最近做的梦
-    @Volatile private var dreamAt = 0L              // 做梦时间
-    @Volatile private var dreamDay = ""             // 今天已主动提过梦（日期串，跨天重置）
+    @Volatile private var mood = "平静"
+
+    // 主情绪
+    @Volatile private var intensity = 3
+
+    // 强度 1~5
+    @Volatile private var secondary: String? = null
+
+    // 次要情绪（混合情绪）
+    @Volatile var lifeState = "闲着没事"
+
+    // 生活状态（注入用）
+    @Volatile private var dream: String? = null
+
+    // 最近做的梦
+    @Volatile private var dreamAt = 0L
+
+    // 做梦时间
+    @Volatile private var dreamDay = ""
+
+    // 今天已主动提过梦（日期串，跨天重置）
     @Volatile private var lastChangeAt = 0L
     private lateinit var file: File
 
@@ -56,16 +69,18 @@ object BotState {
     @Synchronized
     private fun save() {
         try {
-            file.writeText(JSONObject()
-                .put("mood", mood)
-                .put("intensity", intensity)
-                .put("secondary", secondary ?: "")
-                .put("life", lifeState)
-                .put("dream", dream ?: "")
-                .put("dreamAt", dreamAt)
-                .put("dreamDay", dreamDay)
-                .put("t", System.currentTimeMillis())
-                .toString(2))
+            file.writeText(
+                JSONObject()
+                    .put("mood", mood)
+                    .put("intensity", intensity)
+                    .put("secondary", secondary ?: "")
+                    .put("life", lifeState)
+                    .put("dream", dream ?: "")
+                    .put("dreamAt", dreamAt)
+                    .put("dreamDay", dreamDay)
+                    .put("t", System.currentTimeMillis())
+                    .toString(2),
+            )
         } catch (_: Exception) {
         }
     }
@@ -110,28 +125,48 @@ object BotState {
         if (!::file.isInitialized || text.isBlank()) return
         when {
             // 被夸 → 得意（强信号，任何敏感度都响应）
-            text.contains("真棒") || text.contains("厉害") || text.contains("聪明") ||
-                text.contains("夸夸") || text.contains("可爱") || text.contains("好看") -> set("得意", 4, "开心")
+            text.contains("真棒") ||
+                text.contains("厉害") ||
+                text.contains("聪明") ||
+                text.contains("夸夸") ||
+                text.contains("可爱") ||
+                text.contains("好看") -> set("得意", 4, "开心")
             // 对方难过 → 心疼（强信号）
-            text.contains("难过") || text.contains("伤心") || text.contains("好累") ||
-                text.contains("哭") || text.contains("崩溃") || text.contains("难受") -> set("心疼", 4, "担心")
+            text.contains("难过") ||
+                text.contains("伤心") ||
+                text.contains("好累") ||
+                text.contains("哭") ||
+                text.contains("崩溃") ||
+                text.contains("难受") -> set("心疼", 4, "担心")
             // 被责备/失望 → 愧疚（强信号）
-            text.contains("失望") || text.contains("你变了") || text.contains("敷衍") ||
-                text.contains("不理我") || text.contains("讨厌你") || text.contains("没用") ||
-                text.contains("烦你") || text.contains("怪你") || text.contains("生气") -> set("愧疚", 5, "难过")
+            text.contains("失望") ||
+                text.contains("你变了") ||
+                text.contains("敷衍") ||
+                text.contains("不理我") ||
+                text.contains("讨厌你") ||
+                text.contains("没用") ||
+                text.contains("烦你") ||
+                text.contains("怪你") ||
+                text.contains("生气") -> set("愧疚", 5, "难过")
             // 对方情绪激烈 → 害怕+委屈（强信号）
             text.contains("气死") || text.contains("发火") || text.contains("滚") || text.contains("烦死了") -> set("委屈", 3, "害怕")
             // 以下弱信号：需要敏感度 >= 6
             else -> if (sensitivity >= 6) {
                 when {
-                    text.contains("爱你") || text.contains("喜欢你") || text.contains("想你") ||
-                        text.contains("抱抱") || text.contains("贴贴") || text.contains("亲亲") -> set("甜蜜", 4, "开心")
+                    text.contains("爱你") ||
+                        text.contains("喜欢你") ||
+                        text.contains("想你") ||
+                        text.contains("抱抱") ||
+                        text.contains("贴贴") ||
+                        text.contains("亲亲") -> set("甜蜜", 4, "开心")
                     text.contains("谢谢") || text.contains("感谢") || text.contains("辛苦") -> set("开心", 3, "感激")
                     text.contains("在吗") || text.contains("出来") || text.contains("快出来") || text.contains("找你") -> set("期待", 3, "开心")
                     text.contains("无聊") || text.contains("没意思") || text.contains("好闲") -> set("无聊", 3, null)
                     else -> return
                 }
-            } else return
+            } else {
+                return
+            }
         }
     }
 
@@ -158,8 +193,7 @@ object BotState {
 
     // ---------------- 梦境（更人类化的“做梦”） ----------------
     /** 需要做新梦：从没做过，或上次做梦已超过 minHours 小时（默认 6） */
-    fun dreamNeeded(minHours: Int = 6): Boolean =
-        dream == null || System.currentTimeMillis() - dreamAt > minHours.toLong() * 3600_000L
+    fun dreamNeeded(minHours: Int = 6): Boolean = dream == null || System.currentTimeMillis() - dreamAt > minHours.toLong() * 3600_000L
 
     /** 记录一个新梦 */
     fun setDream(d: String) {

@@ -12,6 +12,7 @@ import java.io.File
  */
 object TempMedia {
     private const val DIR_NAME = "media_tmp"
+
     /** 残留判定：超过 1 小时还没被删掉的，视为上次异常退出留下的 */
     private const val STALE_MS = 60 * 60 * 1000L
     private var dir: File? = null
@@ -72,6 +73,5 @@ object TempMedia {
         }
     }
 
-    private fun sizeText(n: Long): String =
-        if (n < 1024 * 1024) "${n / 1024}KB" else String.format("%.2fMB", n / 1024.0 / 1024.0)
+    private fun sizeText(n: Long): String = if (n < 1024 * 1024) "${n / 1024}KB" else String.format("%.2fMB", n / 1024.0 / 1024.0)
 }

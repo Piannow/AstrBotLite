@@ -45,7 +45,7 @@ object ChatEngine {
         val code: Int,
         val bodyText: String,
         /** 服务端 Retry-After（毫秒，0=未提供） */
-        val retryAfterMs: Long = 0
+        val retryAfterMs: Long = 0,
     ) : Exception(messageOf(code, bodyText)) {
         companion object {
             fun messageOf(code: Int, body: String): String {
@@ -80,16 +80,14 @@ object ChatEngine {
     }
 
     /** 快捷测试 */
-    fun testChat(question: String): String {
-        return chat(listOf(ChatMsg("user", question)))
-    }
+    fun testChat(question: String): String = chat(listOf(ChatMsg("user", question)))
 
     fun chatWith(
         baseUrl: String,
         apiKey: String,
         model: String,
         msgs: List<ChatMsg>,
-        temperature: Float = 0.8f
+        temperature: Float = 0.8f,
     ): String {
         val base = baseUrl.trim().trimEnd('/')
         if (base.isEmpty()) throw Exception("未配置 API 地址")
@@ -125,7 +123,7 @@ object ChatEngine {
         apiKey: String,
         model: String,
         msgs: List<ChatMsg>,
-        temperature: Float
+        temperature: Float,
     ): String {
         var last: Exception? = null
         var stream = true
@@ -172,8 +170,7 @@ object ChatEngine {
         return base.replace("/api/paas/v4", "/api/coding/paas/v4")
     }
 
-    private fun retriable(code: Int): Boolean =
-        code in setOf(408, 409, 429, 500, 502, 503, 504, 529) || code in 500..599
+    private fun retriable(code: Int): Boolean = code in setOf(408, 409, 429, 500, 502, 503, 504, 529) || code in 500..599
 
     private fun backoff(attempt: Int, code: Int?, reason: String, retryAfterMs: Long = 0) {
         // AstrBot 的 wait_exponential：multiplier=1, min=0.2, max=30 → 1s/2s/4s/8s/16s
@@ -204,7 +201,7 @@ object ChatEngine {
         model: String,
         msgs: List<ChatMsg>,
         temperature: Float,
-        stream: Boolean
+        stream: Boolean,
     ): String {
         val wait = pauseUntil - System.currentTimeMillis()
         if (wait > 0) {
@@ -224,7 +221,7 @@ object ChatEngine {
         model: String,
         msgs: List<ChatMsg>,
         temperature: Float,
-        stream: Boolean
+        stream: Boolean,
     ): String {
         val arr = JSONArray()
         msgs.forEach { arr.put(it.toJson()) }
@@ -325,11 +322,11 @@ object ChatEngine {
                     val cost = (System.currentTimeMillis() - t0) / 1000
                     if (!gotContent && sb.isNotEmpty()) {
                         gotContent = true
-                        Logs.info("[LLM] 正文首字已到（${cost}s，此前思考 ${reasoningChars} 字）")
+                        Logs.info("[LLM] 正文首字已到（${cost}s，此前思考 $reasoningChars 字）")
                     }
                     // 思考阶段每 10 帧报一次进度：让“首包已到之后没动静”能看出是在思考还是真卡住
                     if (!gotContent && lines > 0 && lines % 10 == 0) {
-                        Logs.info("[LLM] 思考中：${lines} 帧 / ${reasoningChars} 字（${cost}s）")
+                        Logs.info("[LLM] 思考中：$lines 帧 / $reasoningChars 字（${cost}s）")
                     }
                     if (done) break
                     line = source.readUtf8Line()
@@ -350,10 +347,10 @@ object ChatEngine {
             // 200 但内容为空（服务端只回了 role/心跳帧，或 reasoning 用尽）→ 当可重试失败，
             // 否则上层会回“AI 返回空内容”的兜底文案（用户实测：glm 偶发一次空包后直接兜底）
             if (content.isEmpty()) {
-                throw IOException("模型返回空内容（流式 ${lines} 帧，finish=${finish.ifBlank { "无" }}）")
+                throw IOException("模型返回空内容（流式 $lines 帧，finish=${finish.ifBlank { "无" }}）")
             }
             val cost = (System.currentTimeMillis() - t0) / 1000
-            Logs.info("[LLM] 响应 ${cost}s（流式 ${lines} 帧），输出 ${content.length} 字")
+            Logs.info("[LLM] 响应 ${cost}s（流式 $lines 帧），输出 ${content.length} 字")
             return content
         }
     }
@@ -404,7 +401,7 @@ object ChatEngine {
             throw IOException("模型返回为空：${text.take(160)}")
         }
         val content = stripThinking(
-            (choices.optJSONObject(0)?.optJSONObject("message")?.optString("content") ?: "")
+            (choices.optJSONObject(0)?.optJSONObject("message")?.optString("content") ?: ""),
         )
         if (content.isEmpty()) throw IOException("模型返回空内容（非流式）")
         return content
@@ -413,7 +410,7 @@ object ChatEngine {
     // ---------- 思考标签剥离（对齐 AstrBot 的 <think>/<thinking> 处理） ----------
     private val THINK_BLOCK = Regex(
         "<(?:think|thinking)>.*?</(?:think|thinking)>",
-        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
     private val THINK_TAIL = Regex("</(?:think|thinking)>\\s*$", RegexOption.IGNORE_CASE)
     private val THINK_OPEN = Regex("<(?:think|thinking)>", RegexOption.IGNORE_CASE)
@@ -434,8 +431,7 @@ object ChatEngine {
     }
 
     /** Cloudflare Workers AI 的 OpenAI 兼容地址 */
-    private fun isCfAiBase(base: String): Boolean =
-        base.contains("api.cloudflare.com/client/v4/accounts/") && base.contains("/ai/v1")
+    private fun isCfAiBase(base: String): Boolean = base.contains("api.cloudflare.com/client/v4/accounts/") && base.contains("/ai/v1")
 
     private fun cfErrorText(o: JSONObject): String {
         val errs = o.optJSONArray("errors")
@@ -493,15 +489,21 @@ object ChatEngine {
                     val taskText = task?.let {
                         (it.optString("id") + " " + it.optString("name")).lowercase()
                     }.orEmpty()
-                    if (task != null && taskText.isNotBlank() &&
+                    if (task != null &&
+                        taskText.isNotBlank() &&
                         !taskText.contains("text generation") &&
                         !taskText.contains("text-generation")
-                    ) continue
+                    ) {
+                        continue
+                    }
                     models.add(model)
                 }
-                if (models.isEmpty()) "无可用模型"
-                else models.distinct().sorted().joinToString("\n") +
-                    "\n\n提示：Workers AI 的对话模型名必须以 @cf/ 开头"
+                if (models.isEmpty()) {
+                    "无可用模型"
+                } else {
+                    models.distinct().sorted().joinToString("\n") +
+                        "\n\n提示：Workers AI 的对话模型名必须以 @cf/ 开头"
+                }
             }
         } catch (e: Exception) {
             "获取失败: ${e.message}"
@@ -514,7 +516,8 @@ object ChatEngine {
         val ct = r.header("Content-Type").orEmpty().lowercase()
         if (!ct.contains("text/html")) return false
         val t = text.take(2000).lowercase()
-        return t.contains("just a moment") || t.contains("cloudflare") ||
+        return t.contains("just a moment") ||
+            t.contains("cloudflare") ||
             t.contains("attention required")
     }
 

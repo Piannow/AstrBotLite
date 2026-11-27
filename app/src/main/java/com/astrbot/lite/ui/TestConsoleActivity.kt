@@ -25,15 +25,15 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import com.astrbot.lite.R
-import com.astrbot.lite.ui.DpadFocus.scrollDescendantToBottom
 import com.astrbot.lite.core.BotEngine
 import com.astrbot.lite.core.BotState
 import com.astrbot.lite.core.Config
 import com.astrbot.lite.core.LogLine
 import com.astrbot.lite.core.Logs
 import com.astrbot.lite.core.PluginManager
-import com.astrbot.lite.core.QqMessageEvent
 import com.astrbot.lite.core.QQPanelSync
+import com.astrbot.lite.core.QqMessageEvent
+import com.astrbot.lite.ui.DpadFocus.scrollDescendantToBottom
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -50,44 +50,50 @@ class TestConsoleActivity : Activity() {
 
     /** 一条测试消息 */
     private data class Msg(
-        val from: String,           // user / bot / sys
+        val from: String, // user / bot / sys
         val text: String,
         val time: Long,
         val msgId: String = "",
         /** 语音文件路径（🔊 voice:// 标记解析而来；null=纯文本） */
         val media: String? = null,
         /** 用户发送的图片（content:// uri；引用该消息发图生图用） */
-        val image: String? = null
+        val image: String? = null,
     )
 
     /** 一个测试会话（对应一个 QQ 会话环境） */
     private class Conv(
-        val kind: String,           // c2c / group
+        val kind: String, // c2c / group
         val openid: String,
-        var nick: String
+        var nick: String,
     ) {
         val key: String get() = "$kind:$openid"
         val messages = mutableListOf<Msg>()
         val title: String get() = (if (kind == "group") "群聊 · " else "私聊 · ") + openid
     }
 
-    private val IMAGE_PICK = 3101
+    private val reqImagePick = 3101
     private val handler = Handler(Looper.getMainLooper())
     private val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
     private val fmtSec = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+
     /** 单线程执行：测试消息按顺序处理，和真实引擎一致（不并发） */
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "test-console").apply { isDaemon = true } }
 
     private val convs = mutableListOf<Conv>()
     private var current: Conv? = null
+
     /** 待引用（被选中的）机器人消息 */
     private var quoted: Msg? = null
+
     /** 群聊下是否 @ 机器人 */
     private var atBot = false
+
     /** 待发送的图片（点「图片」选择，随下一条消息发出一次） */
     private var pendingImageUri: android.net.Uri? = null
+
     /** 附件图片预览缩略图 */
     private lateinit var previewImg: ImageView
+
     /** 接管 videoFailNotify 的兜底 lambda（服务引擎没跑时安装；关闭时只清理自己那份） */
     private var asyncFallback: ((String, String) -> Unit)? = null
     private var filterKind = "c2c"
@@ -140,16 +146,28 @@ class TestConsoleActivity : Activity() {
             orientation = if (portrait) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
         }
         if (portrait) {
-            root.addView(buildLeftPanel(), LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-            ))
-            root.addView(View(this).apply {
-                setBackgroundColor(color(R.color.divider))
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
-            })
-            root.addView(buildRightPanel(), LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-            ))
+            root.addView(
+                buildLeftPanel(),
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f,
+                ),
+            )
+            root.addView(
+                View(this).apply {
+                    setBackgroundColor(color(R.color.divider))
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1))
+                },
+            )
+            root.addView(
+                buildRightPanel(),
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f,
+                ),
+            )
         } else {
             root.addView(buildLeftPanel(), LinearLayout.LayoutParams(dp(320), ViewGroup.LayoutParams.MATCH_PARENT))
             root.addView(dividerV())
@@ -203,22 +221,30 @@ class TestConsoleActivity : Activity() {
             setPadding(dp(10), dp(10), dp(10), dp(10))
         }
 
-        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        top.addView(TextView(this).apply {
-            text = "测试对话"
-            textSize = 17f
-            setTypeface(typeface, Typeface.BOLD)
-            setTextColor(color(R.color.textMain))
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        top.addView(
+            TextView(this).apply {
+                text = "测试对话"
+                textSize = 17f
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(color(R.color.textMain))
+            },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+        )
         top.addView(smallButton("返回") { finish() })
         col.addView(top)
 
-        col.addView(TextView(this).apply {
-            text = "模拟 QQ 环境，消息不会发到真实 QQ，也不写聊天记录/记忆"
-            textSize = 11f
-            setTextColor(0xFFE65100.toInt())
-            setPadding(0, dp(4), 0, dp(6))
-        })
+        col.addView(
+            TextView(this).apply {
+                text = "模拟 QQ 环境，消息不会发到真实 QQ，也不写聊天记录/记忆"
+                textSize = 11f
+                setTextColor(0xFFE65100.toInt())
+                setPadding(0, dp(4), 0, dp(6))
+            },
+        )
 
         col.addView(tinyLabel("环境"))
         val envRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -240,18 +266,24 @@ class TestConsoleActivity : Activity() {
             setOnClickListener { showConvPicker() }
         }
         DpadFocus.highlight(tvConvList)
-        col.addView(tvConvList, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
+        col.addView(
+            tvConvList,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
 
         col.addView(tinyLabel("运行日志"))
         val logTop = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         logTop.addView(smallButton("清空日志", 1f) { logText.text = "" })
-        logTop.addView(smallButton("复制日志", 1f) {
-            val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            cm.setPrimaryClip(android.content.ClipData.newPlainText("test_log", logText.text.toString()))
-            Toast.makeText(this, "日志已复制（${logText.length()} 字）", Toast.LENGTH_SHORT).show()
-        })
+        logTop.addView(
+            smallButton("复制日志", 1f) {
+                val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("test_log", logText.text.toString()))
+                Toast.makeText(this, "日志已复制（${logText.length()} 字）", Toast.LENGTH_SHORT).show()
+            },
+        )
         col.addView(logTop)
         logText = TextView(this).apply {
             setBackgroundColor(color(R.color.termBg))
@@ -261,9 +293,14 @@ class TestConsoleActivity : Activity() {
             typeface = Typeface.MONOSPACE
         }
         logScroll = ScrollView(this).apply { addView(logText) }
-        col.addView(logScroll, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        col.addView(
+            logScroll,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
         return col
     }
 
@@ -293,9 +330,14 @@ class TestConsoleActivity : Activity() {
             setBackgroundColor(0xFFEDEFF3.toInt())
             addView(chatBox)
         }
-        col.addView(chatScroll, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        col.addView(
+            chatScroll,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
 
         tvThinking = TextView(this).apply {
             textSize = 12f
@@ -387,13 +429,27 @@ class TestConsoleActivity : Activity() {
         }
 
         val avatar = TextView(this).apply {
-            text = if (isUser) "我" else if (isThought) "🧠" else "AI"
+            text = if (isUser) {
+                "我"
+            } else if (isThought) {
+                "🧠"
+            } else {
+                "AI"
+            }
             textSize = if (isThought) 14f else 11f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(if (isUser) 0xFF0099FF.toInt() else if (isThought) 0xFF9C27B0.toInt() else 0xFF7C8DB5.toInt())
+                setColor(
+                    if (isUser) {
+                        0xFF0099FF.toInt()
+                    } else if (isThought) {
+                        0xFF9C27B0.toInt()
+                    } else {
+                        0xFF7C8DB5.toInt()
+                    },
+                )
             }
         }
         val avLp = LinearLayout.LayoutParams(dp(30), dp(30)).apply {
@@ -406,7 +462,15 @@ class TestConsoleActivity : Activity() {
         val body = TextView(this).apply {
             text = if (isThought) "💭 ${msg.text}" else msg.text
             textSize = 13f
-            setTextColor(if (isUser) Color.WHITE else if (isThought) 0xFF7B1FA2.toInt() else 0xFF1F2329.toInt())
+            setTextColor(
+                if (isUser) {
+                    Color.WHITE
+                } else if (isThought) {
+                    0xFF7B1FA2.toInt()
+                } else {
+                    0xFF1F2329.toInt()
+                },
+            )
             setPadding(dp(10), dp(7), dp(10), dp(7))
             if (isBot || isThought) maxWidth = dp(520)
             if (isThought) {
@@ -433,7 +497,16 @@ class TestConsoleActivity : Activity() {
                 holder.background = GradientDrawable().apply {
                     cornerRadius = dp(10).toFloat()
                     setColor(if (selected) 0xFFE3F0FF.toInt() else Color.WHITE)
-                    setStroke(dp(2), if (selected) 0xFF0099FF.toInt() else if (focused) 0xFF4C6EF5.toInt() else 0x22000000)
+                    setStroke(
+                        dp(2),
+                        if (selected) {
+                            0xFF0099FF.toInt()
+                        } else if (focused) {
+                            0xFF4C6EF5.toInt()
+                        } else {
+                            0x22000000
+                        },
+                    )
                 }
             }
             paint(false)
@@ -450,51 +523,72 @@ class TestConsoleActivity : Activity() {
                 Toast.makeText(this@TestConsoleActivity, "已复制 AI 回复（${msg.text.length} 字）", Toast.LENGTH_SHORT).show()
                 true
             }
-            holder.addView(body, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ))
+            holder.addView(
+                body,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
             bubbleCol.addView(holder)
             msg.image?.let { uri ->
                 val bmp = decodeThumb(uri, 640)
                 if (bmp != null) {
-                    bubbleCol.addView(ImageView(this).apply {
-                        setImageBitmap(bmp)
-                        scaleType = ImageView.ScaleType.CENTER_CROP
-                    }, LinearLayout.LayoutParams(dp(200), dp(200)).apply { topMargin = dp(4) })
+                    bubbleCol.addView(
+                        ImageView(this).apply {
+                            setImageBitmap(bmp)
+                            scaleType = ImageView.ScaleType.CENTER_CROP
+                        },
+                        LinearLayout.LayoutParams(dp(200), dp(200)).apply { topMargin = dp(4) },
+                    )
                 }
             }
             if (msg.media != null) {
-                bubbleCol.addView(TextView(this).apply {
-                    text = "▶ 播放语音"
-                    textSize = 12f
-                    setTextColor(0xFF1A73E8.toInt())
-                    isFocusable = true
-                    setPadding(dp(10), dp(4), dp(10), dp(4))
-                    setOnClickListener { playVoice(msg.media!!) }
-                })
+                bubbleCol.addView(
+                    TextView(this).apply {
+                        text = "▶ 播放语音"
+                        textSize = 12f
+                        setTextColor(0xFF1A73E8.toInt())
+                        isFocusable = true
+                        setPadding(dp(10), dp(4), dp(10), dp(4))
+                        setOnClickListener { playVoice(msg.media!!) }
+                    },
+                )
             }
             bubbleCol.addView(info)
         } else {
             body.background = GradientDrawable().apply {
                 cornerRadius = dp(10).toFloat()
-                setColor(if (isUser) 0xFF0099FF.toInt() else if (isThought) 0xFFF3E5F5.toInt() else 0xFFFFE0E0.toInt())
+                setColor(
+                    if (isUser) {
+                        0xFF0099FF.toInt()
+                    } else if (isThought) {
+                        0xFFF3E5F5.toInt()
+                    } else {
+                        0xFFFFE0E0.toInt()
+                    },
+                )
             }
             bubbleCol.addView(body)
             // 用户发的图片：气泡内显示缩略图（可看到照片本身，便于选中引用后图生图）
             msg.image?.let { uri ->
                 val bmp = decodeThumb(uri, 640)
                 if (bmp != null) {
-                    bubbleCol.addView(ImageView(this).apply {
-                        setImageBitmap(bmp)
-                        scaleType = ImageView.ScaleType.CENTER_CROP
-                    }, LinearLayout.LayoutParams(dp(200), dp(200)).apply { topMargin = dp(4) })
+                    bubbleCol.addView(
+                        ImageView(this).apply {
+                            setImageBitmap(bmp)
+                            scaleType = ImageView.ScaleType.CENTER_CROP
+                        },
+                        LinearLayout.LayoutParams(dp(200), dp(200)).apply { topMargin = dp(4) },
+                    )
                 }
             }
             bubbleCol.addView(info)
         }
 
         val colLp = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
         )
         if (isUser) {
             row.addView(bubbleCol, colLp)
@@ -515,16 +609,20 @@ class TestConsoleActivity : Activity() {
         val env = if (conv.kind == "group") "群聊" else "私聊"
         val extra = if (conv.kind == "group") {
             if (atBot) "　·　已@机器人（会回复）" else "　·　未@（按设置只接收不回复）"
-        } else ""
+        } else {
+            ""
+        }
         tvHeader.text = "当前会话：${conv.title}　·　$env$extra"
         chatBox.removeAllViews()
         if (conv.messages.isEmpty()) {
-            chatBox.addView(TextView(this).apply {
-                text = "还没有消息。在下面输入框发一条试试。（点机器人消息=引用，长按=复制内容；群聊里可开「@机器人」）"
-                textSize = 12f
-                setTextColor(color(R.color.textSub))
-                setPadding(dp(6), dp(10), dp(6), dp(10))
-            })
+            chatBox.addView(
+                TextView(this).apply {
+                    text = "还没有消息。在下面输入框发一条试试。（点机器人消息=引用，长按=复制内容；群聊里可开「@机器人」）"
+                    textSize = 12f
+                    setTextColor(color(R.color.textSub))
+                    setPadding(dp(6), dp(10), dp(6), dp(10))
+                },
+            )
         } else {
             conv.messages.forEach { chatBox.addView(bubble(it)) }
         }
@@ -547,15 +645,21 @@ class TestConsoleActivity : Activity() {
         tagBox.visibility = if (has) View.VISIBLE else View.GONE
         if (!has) return
         fun addTag(text: String) {
-            tagBox.addView(TextView(this).apply {
-                this.text = text
-                textSize = 12f
-                setTextColor(0xFF8A6100.toInt())
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            tagBox.addView(
+                TextView(this).apply {
+                    this.text = text
+                    textSize = 12f
+                    setTextColor(0xFF8A6100.toInt())
+                },
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+            )
         }
         if (img != null) addTag("📷 将发送图片")
-        if (q != null) addTag("引用：" + q.text.replace("\n", " ").take(40))
-        else if (atTag) addTag("将 @ 机器人")
+        if (q != null) {
+            addTag("引用：" + q.text.replace("\n", " ").take(40))
+        } else if (atTag) {
+            addTag("将 @ 机器人")
+        }
     }
 
     private fun updateConvLabel() {
@@ -582,9 +686,11 @@ class TestConsoleActivity : Activity() {
         selectConv(c)
     }
 
-    private fun defaultId(kind: String): String =
-        if (kind == "group") "test_group_" + String.format("%03d", seq + 1)
-        else "test_user_" + String.format("%03d", seq + 1)
+    private fun defaultId(kind: String): String = if (kind == "group") {
+        "test_group_" + String.format("%03d", seq + 1)
+    } else {
+        "test_user_" + String.format("%03d", seq + 1)
+    }
 
     private fun newConv(kind: String, openid: String, nick: String, silent: Boolean = false): Conv {
         seq++
@@ -622,8 +728,14 @@ class TestConsoleActivity : Activity() {
 
         col.addView(tinyLabel("环境"))
         val rg = RadioGroup(this).apply { orientation = RadioGroup.HORIZONTAL }
-        val rbPrivate = RadioButton(this).apply { text = "私聊"; id = 1 }
-        val rbGroup = RadioButton(this).apply { text = "群聊"; id = 2 }
+        val rbPrivate = RadioButton(this).apply {
+            text = "私聊"
+            id = 1
+        }
+        val rbGroup = RadioButton(this).apply {
+            text = "群聊"
+            id = 2
+        }
         rg.addView(rbPrivate)
         rg.addView(rbGroup)
         if (filterKind == "group") rg.check(2) else rg.check(1)
@@ -706,12 +818,12 @@ class TestConsoleActivity : Activity() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT)
         i.addCategory(Intent.CATEGORY_OPENABLE)
         i.type = "image/*"
-        startActivityForResult(i, IMAGE_PICK)
+        startActivityForResult(i, reqImagePick)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == IMAGE_PICK && resultCode == Activity.RESULT_OK && data?.data != null) {
+        if (requestCode == reqImagePick && resultCode == Activity.RESULT_OK && data?.data != null) {
             pendingImageUri = data.data
             renderTags()
             // 预览缩略图（可直接看到选了哪张照片）
@@ -845,7 +957,18 @@ class TestConsoleActivity : Activity() {
 
         etMessage.text.clear()
         quoted = null
-        val userMsg = Msg("user", if (imgUri == null) raw else if (raw.isBlank()) "📷" else "$raw 📷", System.currentTimeMillis(), image = imgUri?.toString())
+        val userMsg = Msg(
+            "user",
+            if (imgUri == null) {
+                raw
+            } else if (raw.isBlank()) {
+                "📷"
+            } else {
+                "$raw 📷"
+            },
+            System.currentTimeMillis(),
+            image = imgUri?.toString(),
+        )
         c.messages.add(userMsg)
         tvThinking.visibility = View.VISIBLE
         tvThinking.text = "机器人正在思考…"
@@ -864,7 +987,7 @@ class TestConsoleActivity : Activity() {
             imageUrls = imgUri?.let { listOf(it.toString()) }
                 ?: q?.image?.let { listOf(it) }
                 ?: emptyList(),
-            replyMsgId = q?.msgId ?: ""
+            replyMsgId = q?.msgId ?: "",
         )
         if (imgUri != null) {
             pendingImageUri = null // 一次性附件：发完即清，后续命令靠会话图片记忆
@@ -924,17 +1047,16 @@ class TestConsoleActivity : Activity() {
 
     // ---------------- 小工具 ----------------
 
-    private fun smallButton(t: String, weight: Float = 0f, onClick: () -> Unit): Button =
-        Button(this).apply {
-            text = t
-            textSize = 12f
-            isFocusable = true
-            setOnClickListener { onClick() }
-            if (weight > 0f) {
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, weight)
-            }
-            DpadFocus.highlight(this)
+    private fun smallButton(t: String, weight: Float = 0f, onClick: () -> Unit): Button = Button(this).apply {
+        text = t
+        textSize = 12f
+        isFocusable = true
+        setOnClickListener { onClick() }
+        if (weight > 0f) {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, weight)
         }
+        DpadFocus.highlight(this)
+    }
 
     private fun tinyLabel(t: String): TextView = TextView(this).apply {
         text = t

@@ -21,7 +21,7 @@ object GameEngine {
     data class GameItem(
         val id: Int = 0,
         val title: String = "",
-        val versionInfo: String = ""
+        val versionInfo: String = "",
     )
 
     /** 网盘资源项 */
@@ -30,7 +30,7 @@ object GameEngine {
         val version: String = "",
         val size: String = "",
         val directUrl: String = "",
-        val panId: String = ""
+        val panId: String = "",
     )
 
     /** 搜索/列表分页结果 */
@@ -38,14 +38,14 @@ object GameEngine {
         val items: List<GameItem> = emptyList(),
         val total: Int = 0,
         /** 总数是否被站点截断（显示 "N+"） */
-        val gte: Boolean = false
+        val gte: Boolean = false,
     )
 
     /** 详情结果 */
     data class Detail(
         val item: GameItem = GameItem(),
         val resources: List<GameRes> = emptyList(),
-        val versionInfo: String = ""
+        val versionInfo: String = "",
     )
 
     private const val UNAVAILABLE = "游戏资源库数据源未接入（源码快照缺失，功能暂时不可用）"

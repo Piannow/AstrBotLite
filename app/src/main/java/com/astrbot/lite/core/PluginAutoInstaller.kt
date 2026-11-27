@@ -25,12 +25,19 @@ object PluginAutoInstaller {
             }
         } catch (_: Throwable) {}
         if (needed.isEmpty()) return emptyList()
-        val catalog = try { PluginManager.loadCatalog() } catch (_: Throwable) { emptyList() }
+        val catalog = try {
+            PluginManager.loadCatalog()
+        } catch (_: Throwable) {
+            emptyList()
+        }
         return needed.mapNotNull { pid -> catalog.firstOrNull { it.id == pid } }
     }
 
     fun installAll(act: Activity, plugins: List<PluginInfo>, onDone: (Int, List<String>) -> Unit) {
-        if (plugins.isEmpty()) { onDone(0, emptyList()); return }
+        if (plugins.isEmpty()) {
+            onDone(0, emptyList())
+            return
+        }
         val taskId = "import-auto-" + System.currentTimeMillis()
         val title = "导入配置·补齐插件"
         val total = plugins.size
@@ -49,13 +56,23 @@ object PluginAutoInstaller {
                     break
                 }
                 InstallProgress.update("(" + (idx + 1) + "/" + total + ") 正在安装 " + p.name, idx * 100 / total)
-                val r = try { PluginManager.installFromCatalog(p) } catch (_: Throwable) { false }
+                val r = try {
+                    PluginManager.installFromCatalog(p)
+                } catch (_: Throwable) {
+                    false
+                }
                 if (r) ok++ else fail.add(p.name)
             }
-            try { AiPool.syncMediaPluginConfigs() } catch (_: Throwable) {}
+            try {
+                AiPool.syncMediaPluginConfigs()
+            } catch (_: Throwable) {}
             InstallProgress.update("完成：成功 " + ok + " / 失败 " + fail.size, 100)
             InstallProgress.finish(fail.isEmpty(), if (fail.isEmpty()) "全部完成" else "部分失败")
             onDone(ok, fail)
-        }.apply { isDaemon = true; name = "import-auto"; start() }
+        }.apply {
+            isDaemon = true
+            name = "import-auto"
+            start()
+        }
     }
 }

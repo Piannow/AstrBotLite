@@ -6,19 +6,17 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.view.View
 import android.view.KeyEvent
+import android.view.View
 import android.widget.FrameLayout
-import android.widget.LinearLayout
 import android.widget.TextView
 import com.astrbot.lite.R
 import com.astrbot.lite.core.Config
-import com.astrbot.lite.core.Logs
 import com.astrbot.lite.service.BotService
+import com.astrbot.lite.ui.tabs.AccountTab
 import com.astrbot.lite.ui.tabs.PersonaTab
 import com.astrbot.lite.ui.tabs.PluginTab
 import com.astrbot.lite.ui.tabs.SettingsTab
-import com.astrbot.lite.ui.tabs.AccountTab
 import java.util.HashMap
 
 /**
@@ -51,8 +49,8 @@ class MainActivity : Activity() {
                 it,
                 FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT
-                )
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                ),
             )
         }
 
@@ -92,7 +90,7 @@ class MainActivity : Activity() {
                 val dl = java.io.File(
                     android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
                     "AstrBotLite-crash-" + java.text.SimpleDateFormat("MMdd-HHmmss", java.util.Locale.getDefault())
-                        .format(java.util.Date()) + ".txt"
+                        .format(java.util.Date()) + ".txt",
                 )
                 dl.writeText(text)
             } catch (_: Throwable) {
@@ -137,9 +135,12 @@ class MainActivity : Activity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val kc = event.keyCode
         val action = event.action
-        val isDpad = kc == KeyEvent.KEYCODE_DPAD_UP || kc == KeyEvent.KEYCODE_DPAD_DOWN ||
-            kc == KeyEvent.KEYCODE_DPAD_LEFT || kc == KeyEvent.KEYCODE_DPAD_RIGHT ||
-            kc == KeyEvent.KEYCODE_DPAD_CENTER || kc == KeyEvent.KEYCODE_ENTER ||
+        val isDpad = kc == KeyEvent.KEYCODE_DPAD_UP ||
+            kc == KeyEvent.KEYCODE_DPAD_DOWN ||
+            kc == KeyEvent.KEYCODE_DPAD_LEFT ||
+            kc == KeyEvent.KEYCODE_DPAD_RIGHT ||
+            kc == KeyEvent.KEYCODE_DPAD_CENTER ||
+            kc == KeyEvent.KEYCODE_ENTER ||
             kc == KeyEvent.KEYCODE_BACK
         if (isDpad && currentTab == 2) {
             if (action == KeyEvent.ACTION_DOWN) {
@@ -222,8 +223,9 @@ class MainActivity : Activity() {
                 requestPermissions(
                     arrayOf(
                         Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                        Manifest.permission.READ_EXTERNAL_STORAGE
-                    ), 200
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                    ),
+                    200,
                 )
             }
         }

@@ -22,7 +22,7 @@ object Config {
         "https://api.deepseek.com/v1",
         "https://open.bigmodel.cn/api/paas/v4",
         "https://ark.cn-beijing.volces.com/api/v3",
-        ""
+        "",
     )
 
     val PROVIDER_MODEL = arrayOf(
@@ -30,7 +30,7 @@ object Config {
         "deepseek-chat",
         "glm-4-flash",
         "doubao-1-5-lite-32k-250115",
-        ""
+        "",
     )
 
     fun init(ctx: Context) {
@@ -132,6 +132,7 @@ object Config {
     /** 历史开关字段保留读写，但读取恒 true——开关曾把池同步挡在门外，造成“配置页一片空白” */
     var aiPoolEnabled: Boolean
         get() = true
+
         @Suppress("UNUSED_PARAMETER")
         set(v) { /* 已废弃：写入忽略，读取恒 true */ }
 
@@ -146,6 +147,7 @@ object Config {
     var qqPanelIds: String
         get() = sp.getString("qq_panel_ids", "") ?: ""
         set(v) = sp.edit().putString("qq_panel_ids", v).apply()
+
     /** 上次已同步的面板 items JSON（相同则零 API 调用） */
     var qqPanelItems: String
         get() = sp.getString("qq_panel_items", "") ?: ""

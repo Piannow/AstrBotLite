@@ -24,7 +24,7 @@ object TTSEngine {
         val baseUrl: String = "",
         val apiKey: String = "",
         val voice: String = "alloy",
-        val model: String = "tts-1"
+        val model: String = "tts-1",
     ) {
         val valid: Boolean get() = baseUrl.isNotBlank() && apiKey.isNotBlank()
     }
@@ -38,7 +38,7 @@ object TTSEngine {
                 baseUrl = pool.baseUrl,
                 apiKey = pool.apiKey,
                 voice = m["voice"]?.trim()?.takeIf { it.isNotBlank() } ?: "alloy",
-                model = pool.model.ifBlank { m["model"]?.trim()?.takeIf { it.isNotBlank() } ?: "tts-1" }
+                model = pool.model.ifBlank { m["model"]?.trim()?.takeIf { it.isNotBlank() } ?: "tts-1" },
             )
         }
         val m = PluginManager.configMap("tts")
@@ -46,7 +46,7 @@ object TTSEngine {
             baseUrl = m["baseUrl"]?.trim().orEmpty(),
             apiKey = m["apiKey"]?.trim().orEmpty(),
             voice = m["voice"]?.trim()?.takeIf { it.isNotBlank() } ?: "alloy",
-            model = m["model"]?.trim()?.takeIf { it.isNotBlank() } ?: "tts-1"
+            model = m["model"]?.trim()?.takeIf { it.isNotBlank() } ?: "tts-1",
         )
     }
 

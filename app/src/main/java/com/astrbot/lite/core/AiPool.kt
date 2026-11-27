@@ -1,8 +1,6 @@
 package com.astrbot.lite.core
 
 import android.content.Context
-import com.chaquo.python.internal.Common
-import okhttp3.internal.ws.WebSocketProtocol
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -12,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 
 object AiPool {
@@ -30,7 +27,7 @@ object AiPool {
         Feature("proactive", "主动消息（主动找人聊天）", false),
         Feature("image", "生成图片（文生图 / 图生图）", true),
         Feature("video", "生成视频", true),
-        Feature("tts", "语音合成（TTS）", true)
+        Feature("tts", "语音合成（TTS）", true),
     )
 
     private val entries = CopyOnWriteArrayList<AiPoolEntry>()
@@ -42,7 +39,7 @@ object AiPool {
     private val FEATURE_PLUGINS: Map<String, List<String>> = mapOf(
         "image" to listOf("text2image", "imageengine", "image2image"),
         "video" to listOf("videogen"),
-        "tts" to listOf("tts")
+        "tts" to listOf("tts"),
     )
 
     private val PLUGIN_FEATURES: Map<String, String> = buildMap {
@@ -55,17 +52,15 @@ object AiPool {
     private val IMAGE_URL_SIGNS = listOf(
         "dalle", "dall-e", "midjourney", "stable", "stability", "flux",
         "ideogram", "recraft", "pollinations", "pexels", "pixai", "novelai",
-        "pixiv", "waifu", "tiam", "images/generations", "/image"
+        "pixiv", "waifu", "tiam", "images/generations", "/image",
     )
     private val IMAGE_MODEL_SIGNS = listOf(
         "dall-e", "dalle", "sd-", "sdxl", "stable-diffusion", "midjourney",
         "flux", "ideogram", "recraft", "pollinations", "kolors", "seedream",
-        "wanx", "cogview", "image"
+        "wanx", "cogview", "image",
     )
 
-    private fun isImageModel(e: AiPoolEntry): Boolean {
-        return isImageUrl(e.baseUrl) || isImageModelName(e.model)
-    }
+    private fun isImageModel(e: AiPoolEntry): Boolean = isImageUrl(e.baseUrl) || isImageModelName(e.model)
     private fun isImageUrl(s: String?): Boolean {
         val l = s?.lowercase() ?: ""
         return IMAGE_URL_SIGNS.any { l.contains(it) }
@@ -78,7 +73,7 @@ object AiPool {
     data class Feature(
         val key: String,
         val label: String,
-        val media: Boolean
+        val media: Boolean,
     )
 
     fun init(ctx: Context) {
@@ -98,7 +93,7 @@ object AiPool {
         val mediaPlugins = mapOf(
             "image" to listOf("text2image", "imageengine", "image2image"),
             "video" to listOf("videogen"),
-            "tts" to listOf("tts")
+            "tts" to listOf("tts"),
         )
         var migrated = false
         for ((feature, pluginIds) in mediaPlugins) {
@@ -112,7 +107,10 @@ object AiPool {
                         val name = "$feature-migrated"
                         val entry = AiPoolEntry(
                             "migrated_${feature}_${System.currentTimeMillis()}",
-                            name, baseUrl, apiKey, model
+                            name,
+                            baseUrl,
+                            apiKey,
+                            model,
                         )
                         entries.add(entry)
                         assign[feature] = entry.id
@@ -129,9 +127,7 @@ object AiPool {
 
     fun list(): List<AiPoolEntry> = entries.toList()
 
-    fun get(id: String): AiPoolEntry? {
-        return entries.find { it.id == id }
-    }
+    fun get(id: String): AiPoolEntry? = entries.find { it.id == id }
 
     fun add(entry: AiPoolEntry) {
         entries.removeAll { it.id == entry.id }
@@ -176,7 +172,9 @@ object AiPool {
                 val entry = AiPoolEntry(
                     "sync_${feature}_${System.currentTimeMillis()}",
                     "$feature·插件配置",
-                    nb, ak, md
+                    nb,
+                    ak,
+                    md,
                 )
                 entries.add(entry)
                 assign[feature] = entry.id
@@ -216,10 +214,11 @@ object AiPool {
                         for (pid in value) {
                             val p = PluginManager.installed(pid) ?: continue
                             val config = p.config
-                            val isEmpty = config !is Collection<*> || config.isEmpty() ||
-                                    config.filterIsInstance<PluginConfigField>().none {
-                                        it.key in listOf("baseUrl", "apiKey", "model")
-                                    }
+                            val isEmpty = config !is Collection<*> ||
+                                config.isEmpty() ||
+                                config.filterIsInstance<PluginConfigField>().none {
+                                    it.key in listOf("baseUrl", "apiKey", "model")
+                                }
                             if (!isEmpty) continue
 
                             val updated = p.config.filterIsInstance<PluginConfigField>().map { f ->
@@ -258,10 +257,8 @@ object AiPool {
         return Config.isAiConfigured()
     }
 
-    fun usable(): Boolean {
-        return entries.any { e ->
-            !e.baseUrl.isBlank() && !e.apiKey.isBlank() && !e.model.isBlank()
-        }
+    fun usable(): Boolean = entries.any { e ->
+        !e.baseUrl.isBlank() && !e.apiKey.isBlank() && !e.model.isBlank()
     }
 
     fun readyOrWarn(source: String, feature: String): Boolean {
@@ -286,13 +283,17 @@ object AiPool {
     }
 
     fun submit(feature: String, msgs: List<ChatMsg>, timeoutMs: Long = 30000): String? {
-        val future = submitPool.submit(Callable {
-            chatFor(feature, msgs)
-        })
+        val future = submitPool.submit(
+            Callable {
+                chatFor(feature, msgs)
+            },
+        )
         return try {
             future.get(timeoutMs, TimeUnit.MILLISECONDS)
         } catch (e: Exception) {
-            try { future.cancel(true) } catch (_: Exception) {}
+            try {
+                future.cancel(true)
+            } catch (_: Exception) {}
             null
         }
     }
@@ -429,7 +430,9 @@ object AiPool {
                         val newId = "imported_${System.currentTimeMillis()}_$i"
                         fixedId++
                         entry.copy(id = newId)
-                    } else entry
+                    } else {
+                        entry
+                    }
                     seenIds.add(finalEntry.id)
                     entries.add(finalEntry)
                 } catch (_: Exception) {}

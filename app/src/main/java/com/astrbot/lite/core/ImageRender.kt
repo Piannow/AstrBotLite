@@ -31,7 +31,7 @@ object ImageRender {
         val regionY2: Int,
         val textColor: Int,
         val bracketColor: Int,
-        val maxFontHeight: Int
+        val maxFontHeight: Int,
     )
 
     /**
@@ -159,10 +159,16 @@ object ImageRender {
     fun parseColor(raw: String?, defaultCsv: String): Int {
         fun parse(s: String): Int? = try {
             val p = s.split(',')
-            if (p.size < 3) null else Color.argb(
-                (if (p.size > 3) p[3] else "255").trim().toInt(),
-                p[0].trim().toInt(), p[1].trim().toInt(), p[2].trim().toInt()
-            )
+            if (p.size < 3) {
+                null
+            } else {
+                Color.argb(
+                    (if (p.size > 3) p[3] else "255").trim().toInt(),
+                    p[0].trim().toInt(),
+                    p[1].trim().toInt(),
+                    p[2].trim().toInt(),
+                )
+            }
         } catch (_: Exception) {
             null
         }

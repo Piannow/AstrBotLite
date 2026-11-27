@@ -1,25 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 图标：2×2 色块（白 / 靛蓝 / 黑 / 白），硬边、无圆角、无渐变。
-     自适应前景只画有色块；白色块与背景层同为白色，形成对角构图。 -->
+<!-- 自适应图标前景：与 docs/icon-512.png 逐像素等比。
+     108dp 图层中可见区为中间 72dp（18~90），把源图 512×512 等比映射到该区域：
+     蓝块 = 源图 (263,72)-(440,249) → (54.98,28.13)-(79.88,53.02)
+     黑块 = 源图 (72,263)-(249,440) → (28.13,54.98)-(53.02,79.88)
+     白色块由背景层（纯白）承担，故此处不画。 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 右上：靛蓝 -->
+    <!-- 右上：靛蓝 #3F48CC -->
     <path
         android:fillColor="#3F48CC"
-        android:pathData="M55,26 H82 V53 H55 Z" />
+        android:pathData="M54.98,28.13 H79.88 V53.02 H54.98 Z" />
     <!-- 左下：黑 -->
     <path
         android:fillColor="#000000"
-        android:pathData="M26,55 H53 V82 H26 Z" />
-    <!-- 左上 / 右下：白（与背景同色，保留完整 2×2 结构） -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M26,26 H53 V53 H26 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M55,55 H82 V82 H55 Z" />
+        android:pathData="M28.13,54.98 H53.02 V79.88 H28.13 Z" />
 </vector>

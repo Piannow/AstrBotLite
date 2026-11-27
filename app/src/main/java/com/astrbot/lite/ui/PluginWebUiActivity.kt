@@ -99,7 +99,7 @@ class PluginWebUiActivity : Activity() {
                     }
                     rebuildWeb("health-check-failed")
                 } else {
-                    healthHandler.postDelayed(this, 15000)  // 15s 一次
+                    healthHandler.postDelayed(this, 15000) // 15s 一次
                 }
             }
         }
@@ -121,7 +121,9 @@ class PluginWebUiActivity : Activity() {
                     } else {
                         data?.data?.let { arrayOf(it) }
                     }
-                } else null
+                } else {
+                    null
+                }
                 cb.onReceiveValue(uris)
                 Logs.info("[WebUI] 文件选择结果：${uris?.size ?: 0} 个")
                 return
@@ -179,9 +181,14 @@ class PluginWebUiActivity : Activity() {
             val selRoot = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 addView(tv)
-                addView(wv, LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
-                ))
+                addView(
+                    wv,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        0,
+                        1f,
+                    ),
+                )
             }
             pageContainer = selRoot
             setContentView(selRoot)
@@ -193,18 +200,24 @@ class PluginWebUiActivity : Activity() {
         val webRoot = pid?.let { PythonRuntime.pythonPluginWebRoot(it) }
 
         if (webRoot == null) {
-            setContentView(LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(48, 48, 48, 48)
-                addView(TextView(this@PluginWebUiActivity).apply {
-                    text = (title ?: "插件") + " 没有可用的网页界面资源（views/pages/webui/ui/web 目录）"
-                    textSize = 16f
-                })
-                addView(Button(this@PluginWebUiActivity).apply {
-                    text = "返回"
-                    setOnClickListener { finish() }
-                })
-            })
+            setContentView(
+                LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(48, 48, 48, 48)
+                    addView(
+                        TextView(this@PluginWebUiActivity).apply {
+                            text = (title ?: "插件") + " 没有可用的网页界面资源（views/pages/webui/ui/web 目录）"
+                            textSize = 16f
+                        },
+                    )
+                    addView(
+                        Button(this@PluginWebUiActivity).apply {
+                            text = "返回"
+                            setOnClickListener { finish() }
+                        },
+                    )
+                },
+            )
             return
         }
 
@@ -220,7 +233,9 @@ class PluginWebUiActivity : Activity() {
                 val sb = StringBuilder()
                 for (ch in sub) sb.append(if (ch == sep) '/' else ch)
                 sb.toString()
-            } else ""
+            } else {
+                ""
+            }
         } catch (_: Exception) {
             ""
         }
@@ -228,18 +243,24 @@ class PluginWebUiActivity : Activity() {
         // 启动本地服务：登记 pid → 插件根 + 最近视图（帮助页/兜底解析用）
         val port = LocalWebServer.ensureStarted(pid, pRoot, rel)
         if (port < 0) {
-            setContentView(LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(48, 48, 48, 48)
-                addView(TextView(this@PluginWebUiActivity).apply {
-                    text = "本地服务启动失败（没有可用端口），请稍后重试"
-                    textSize = 16f
-                })
-                addView(Button(this@PluginWebUiActivity).apply {
-                    text = "返回"
-                    setOnClickListener { finish() }
-                })
-            })
+            setContentView(
+                LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(48, 48, 48, 48)
+                    addView(
+                        TextView(this@PluginWebUiActivity).apply {
+                            text = "本地服务启动失败（没有可用端口），请稍后重试"
+                            textSize = 16f
+                        },
+                    )
+                    addView(
+                        Button(this@PluginWebUiActivity).apply {
+                            text = "返回"
+                            setOnClickListener { finish() }
+                        },
+                    )
+                },
+            )
             return
         }
 
@@ -254,22 +275,38 @@ class PluginWebUiActivity : Activity() {
         val contentFrame = FrameLayout(this)
         web = createWebView()
         rootLayout.addView(tvTitle)
-        rootLayout.addView(contentFrame, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        rootLayout.addView(
+            contentFrame,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
         web?.let {
-            contentFrame.addView(it, FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            ))
+            contentFrame.addView(
+                it,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                ),
+            )
         }
         // E5 蓝球：叠加在 WebView 上层，DPad 驱动移动，确定键合成触摸
-        try { makeBall(contentFrame) } catch (t: Throwable) { Logs.warn("[WebUI-Ball] 创建蓝球失败: ${t.message}") }
+        try {
+            makeBall(contentFrame)
+        } catch (t: Throwable) {
+            Logs.warn("[WebUI-Ball] 创建蓝球失败: ${t.message}")
+        }
         setContentView(rootLayout)
         pageContainer = contentFrame
 
-        val relEnc = if (rel.isEmpty()) "" else "/" + rel.split("/").joinToString("/") {
-            java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20")
+        val relEnc = if (rel.isEmpty()) {
+            ""
+        } else {
+            "/" + rel.split("/").joinToString("/") {
+                java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20")
+            }
         }
         val url = "http://127.0.0.1:$port/$pid$relEnc/index.html"
         pageUrl = url
@@ -293,7 +330,8 @@ class PluginWebUiActivity : Activity() {
                     runOnUiThread {
                         try {
                             web?.evaluateJavascript(
-                                "window.__selfcb && window.__selfcb({\"ok\":\"true\"});", null
+                                "window.__selfcb && window.__selfcb({\"ok\":\"true\"});",
+                                null,
                             )
                         } catch (e: Exception) {
                             Logs.warn("[Web桥-JS] ping 回推失败: ${e.message}")
@@ -333,7 +371,7 @@ class PluginWebUiActivity : Activity() {
                         try {
                             web?.evaluateJavascript(
                                 "window.__djcb && window.__djcb($callId, ${org.json.JSONObject.quote(result)});",
-                                null
+                                null,
                             )
                         } catch (e: Exception) {
                             Logs.warn("[Web桥-JS] 回推失败: ${e.message}")
@@ -397,7 +435,7 @@ class PluginWebUiActivity : Activity() {
             override fun onShowFileChooser(
                 view: WebView?,
                 callback: android.webkit.ValueCallback<Array<android.net.Uri>>?,
-                params: FileChooserParams?
+                params: FileChooserParams?,
             ): Boolean {
                 // 已有选择器在飞：取消旧的（防 callback 泄漏）
                 filePathCallback?.onReceiveValue(null)
@@ -442,7 +480,7 @@ class PluginWebUiActivity : Activity() {
                 view?.evaluateJavascript(
                     "window.onerror=function(m,s,l){console.error('UNCAUGHT: '+m+' @'+s+':'+l);return false;};" +
                         "window.addEventListener('unhandledrejection',function(e){console.error('UNHANDLED: '+((e.reason&&e.reason.message)||e.reason));});",
-                    null
+                    null,
                 )
             }
 
@@ -479,11 +517,21 @@ class PluginWebUiActivity : Activity() {
         val w = web ?: return
         web = null
         try {
-            try { (w.parent as? android.view.ViewGroup)?.removeView(w) } catch (_: Exception) {}
-            try { w.stopLoading() } catch (_: Exception) {}
-            try { w.loadUrl("about:blank") } catch (_: Exception) {}
-            try { w.removeJavascriptInterface("webview") } catch (_: Exception) {}
-            try { w.settings.javaScriptEnabled = false } catch (_: Exception) {}
+            try {
+                (w.parent as? android.view.ViewGroup)?.removeView(w)
+            } catch (_: Exception) {}
+            try {
+                w.stopLoading()
+            } catch (_: Exception) {}
+            try {
+                w.loadUrl("about:blank")
+            } catch (_: Exception) {}
+            try {
+                w.removeJavascriptInterface("webview")
+            } catch (_: Exception) {}
+            try {
+                w.settings.javaScriptEnabled = false
+            } catch (_: Exception) {}
             w.destroy()
             Logs.info("[WebUI] $reason：页面已销毁释放（下次进入自动重建）")
         } catch (t: Throwable) {
@@ -512,7 +560,9 @@ class PluginWebUiActivity : Activity() {
             isFocusable = false
             isClickable = false
             // 半透明阴影感（可选）：elevation 低版本兼容处理
-            try { elevation = 4f * resources.displayMetrics.density } catch (_: Throwable) {}
+            try {
+                elevation = 4f * resources.displayMetrics.density
+            } catch (_: Throwable) {}
         }
         val lp = FrameLayout.LayoutParams(size, size).apply {
             leftMargin = 0
@@ -639,14 +689,22 @@ class PluginWebUiActivity : Activity() {
         val up = android.view.MotionEvent.obtain(now, now + 60, android.view.MotionEvent.ACTION_UP, cxInWeb, cyInWeb, 0)
         try {
             wv.dispatchTouchEvent(down)
-            wv.postDelayed({ try { wv.dispatchTouchEvent(up) } catch (_: Throwable) {} }, 60)
+            wv.postDelayed({
+                try {
+                    wv.dispatchTouchEvent(up)
+                } catch (_: Throwable) {}
+            }, 60)
             Logs.info("[WebUI-Ball] 合成点击 ($cxInWeb, $cyInWeb)")
         } catch (t: Throwable) {
             Logs.warn("[WebUI-Ball] 合成点击失败: ${t.message}")
         } finally {
             down.recycle()
             // up 在 postDelayed 里用完后回收
-            wv.postDelayed({ try { up.recycle() } catch (_: Throwable) {} }, 200)
+            wv.postDelayed({
+                try {
+                    up.recycle()
+                } catch (_: Throwable) {}
+            }, 200)
         }
     }
 
@@ -672,25 +730,46 @@ class PluginWebUiActivity : Activity() {
         val container = pageContainer ?: return
         // 先清理旧 WebView（如果有）
         if (web != null) {
-            try { (web!!.parent as? android.view.ViewGroup)?.removeView(web!!) } catch (_: Exception) {}
-            try { web!!.stopLoading() } catch (_: Exception) {}
-            try { web!!.loadUrl("about:blank") } catch (_: Exception) {}
-            try { web!!.removeJavascriptInterface("webview") } catch (_: Exception) {}
-            try { web!!.settings.javaScriptEnabled = false } catch (_: Exception) {}
-            try { web!!.destroy() } catch (_: Exception) {}
+            try {
+                (web!!.parent as? android.view.ViewGroup)?.removeView(web!!)
+            } catch (_: Exception) {}
+            try {
+                web!!.stopLoading()
+            } catch (_: Exception) {}
+            try {
+                web!!.loadUrl("about:blank")
+            } catch (_: Exception) {}
+            try {
+                web!!.removeJavascriptInterface("webview")
+            } catch (_: Exception) {}
+            try {
+                web!!.settings.javaScriptEnabled = false
+            } catch (_: Exception) {}
+            try {
+                web!!.destroy()
+            } catch (_: Exception) {}
             web = null
         }
         val wv = createWebView()
         web = wv
         if (container is FrameLayout) {
-            container.addView(wv, 0, FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            ))
+            container.addView(
+                wv,
+                0,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                ),
+            )
         } else {
-            container.addView(wv, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
-            ))
+            container.addView(
+                wv,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f,
+                ),
+            )
         }
         pageUrl = url
         Logs.info("[WebUI] 重建完成 → $url")
@@ -712,14 +791,23 @@ class PluginWebUiActivity : Activity() {
         val wv = createWebView()
         web = wv
         if (container is FrameLayout) {
-            container.addView(wv, 0, FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            ))
+            container.addView(
+                wv,
+                0,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                ),
+            )
         } else {
-            container.addView(wv, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
-            ))
+            container.addView(
+                wv,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f,
+                ),
+            )
         }
         Logs.info("[WebUI] 重建页面 → $url")
         wv.loadUrl(url)
@@ -782,7 +870,8 @@ class PluginWebUiActivity : Activity() {
                     android.view.KeyEvent.KEYCODE_DPAD_UP,
                     android.view.KeyEvent.KEYCODE_DPAD_DOWN,
                     android.view.KeyEvent.KEYCODE_DPAD_LEFT,
-                    android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    android.view.KeyEvent.KEYCODE_DPAD_RIGHT,
+                    -> {
                         if (isDown) {
                             // E5b: 按下立即走一步，同时启动自定义重复定时器
                             repeatDir = kc
@@ -809,7 +898,8 @@ class PluginWebUiActivity : Activity() {
                         return true
                     }
                     android.view.KeyEvent.KEYCODE_DPAD_CENTER,
-                    android.view.KeyEvent.KEYCODE_ENTER -> {
+                    android.view.KeyEvent.KEYCODE_ENTER,
+                    -> {
                         if (isUp) {
                             dispatchTouchAtBall()
                         }
@@ -837,17 +927,21 @@ class PluginWebUiActivity : Activity() {
 
         /** 便捷打开入口 */
         fun openWebUi(act: Activity, pluginId: String, pluginName: String) {
-            act.startActivity(android.content.Intent(act, PluginWebUiActivity::class.java).apply {
-                putExtra("pid", pluginId)
-                putExtra("title", pluginName)
-            })
+            act.startActivity(
+                android.content.Intent(act, PluginWebUiActivity::class.java).apply {
+                    putExtra("pid", pluginId)
+                    putExtra("title", pluginName)
+                },
+            )
         }
 
         /** 交互自测页入口（1.7.97）：四段二分定位（纯点击/fetch/JS桥/环境探针） */
         fun openSelfTest(act: Activity) {
-            act.startActivity(android.content.Intent(act, PluginWebUiActivity::class.java).apply {
-                putExtra("selftest", true)
-            })
+            act.startActivity(
+                android.content.Intent(act, PluginWebUiActivity::class.java).apply {
+                    putExtra("selftest", true)
+                },
+            )
         }
     }
 }

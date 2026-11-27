@@ -100,7 +100,7 @@ object Storage {
     private fun ensureLayout(root: File) {
         for (n in listOf(
             "plugins", "plugins_python", "market", "downloads", "exports",
-            "personas", "chats", "profiles", "logs", "media", "state"
+            "personas", "chats", "profiles", "logs", "media", "state",
         )) {
             File(root, n).mkdirs()
         }
@@ -125,12 +125,12 @@ object Storage {
             "media_tmp" to "media",
             "pool" to "state/pool",
             "thoughts" to "state/thoughts",
-            "knowledge" to "state/knowledge"
+            "knowledge" to "state/knowledge",
         )
         val fileMap = listOf(
             "bot_state.json" to "state/bot_state.json",
             "qq_menu_panel_cleaned" to "state/qq_menu_panel_cleaned",
-            "qq_panel_sync_ver" to "state/qq_panel_sync_ver"
+            "qq_panel_sync_ver" to "state/qq_panel_sync_ver",
         )
         var migrated = 0
         var failed = false

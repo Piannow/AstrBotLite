@@ -46,6 +46,7 @@ class WizardActivity : Activity() {
     private lateinit var tvQqResult: TextView
     private lateinit var tvAiResult: TextView
     private lateinit var tvModelsResult: TextView
+
     /** 模型选择器（获取列表后出现，点一下即选用），运行时插到 tvModelsResult 下面，不用改布局文件 */
     private lateinit var modelPicker: LinearLayout
     private lateinit var modelList: ListView
@@ -106,7 +107,7 @@ class WizardActivity : Activity() {
             try {
                 findViewById<Button>(R.id.btnSave)?.text = "保存"
             } catch (_: Throwable) {}
-            Logs.info("[向导] 编辑账号模式：${editingAcc.name}（${editAccountId}）")
+            Logs.info("[向导] 编辑账号模式：${editingAcc.name}（$editAccountId）")
         } else {
             etAppId.setText(Config.qqAppId)
             etSecret.setText(Config.qqSecret)
@@ -157,16 +158,20 @@ class WizardActivity : Activity() {
                 etModel.setText(name)
                 Toast.makeText(this@WizardActivity, "已选用模型：$name", Toast.LENGTH_SHORT).show()
                 Logs.info("[向导] 已从列表选用模型：$name")
-                showModelPicker(modelNames.joinToString("\n"))   // 刷新"✓ 当前"标记
+                showModelPicker(modelNames.joinToString("\n")) // 刷新"✓ 当前"标记
             }
         }
         modelPicker = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
             addView(modelHint)
-            addView(modelList, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(180)
-            ))
+            addView(
+                modelList,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(180),
+                ),
+            )
         }
         parent.addView(modelPicker, parent.indexOfChild(tvModelsResult) + 1)
     }
@@ -180,7 +185,9 @@ class WizardActivity : Activity() {
         // E6：编辑模式回填该账号的 env；新建/首次配置用全局 Config.qqEnv
         val envValue = if (editAccountId.isNotBlank()) {
             (com.astrbot.lite.core.AccountManager.get(editAccountId)?.env) ?: Config.qqEnv
-        } else Config.qqEnv
+        } else {
+            Config.qqEnv
+        }
         spEnv.setSelection(if (envValue == "sandbox") 1 else 0)
         spEnv.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
@@ -227,8 +234,7 @@ class WizardActivity : Activity() {
         spPersona.setSelection(idx)
     }
 
-    private fun currentPersona(): Persona =
-        personas.getOrNull(spPersona.selectedItemPosition) ?: PersonaManager.active()
+    private fun currentPersona(): Persona = personas.getOrNull(spPersona.selectedItemPosition) ?: PersonaManager.active()
 
     private fun saveFields() {
         // E6：编辑模式下不写全局 QQ 字段（只更新账号记录本身）；AI 配置始终全局
@@ -258,7 +264,7 @@ class WizardActivity : Activity() {
             appId = newAppId,
             secret = newSecret,
             apiBase = newBase,
-            env = newEnv
+            env = newEnv,
         )
     }
 
@@ -273,7 +279,10 @@ class WizardActivity : Activity() {
                 handler.post { tvQqResult.text = r }
                 Logs.info(r)
             } catch (e: Exception) {
-                handler.post { tvQqResult.setTextColor(resources.getColor(R.color.err, null)); tvQqResult.text = "❌ ${e.message}" }
+                handler.post {
+                    tvQqResult.setTextColor(resources.getColor(R.color.err, null))
+                    tvQqResult.text = "❌ ${e.message}"
+                }
                 Logs.err("测试连接失败: ${e.message}")
             }
         }.start()
@@ -346,8 +355,9 @@ class WizardActivity : Activity() {
         }
         val cur = etModel.text.toString().trim()
         modelList.adapter = ArrayAdapter(
-            this, android.R.layout.simple_list_item_1,
-            modelNames.map { if (it == cur) "$it　✓ 当前" else it }
+            this,
+            android.R.layout.simple_list_item_1,
+            modelNames.map { if (it == cur) "$it　✓ 当前" else it },
         )
         modelHint.text = "点一个模型即可选用（共 ${modelNames.size} 个）"
         modelPicker.visibility = View.VISIBLE
@@ -369,10 +379,13 @@ class WizardActivity : Activity() {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(48, 16, 48, 0)
             addView(name)
-            addView(prompt, android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = 16 })
+            addView(
+                prompt,
+                android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = 16 },
+            )
         }
         AlertDialog.Builder(this)
             .setTitle("新建人设卡")
@@ -391,7 +404,7 @@ class WizardActivity : Activity() {
                     description = "",
                     prompt = p.ifEmpty { "你是$n。请用中文自然、友好地聊天。" },
                     greeting = "",
-                    createdAt = System.currentTimeMillis()
+                    createdAt = System.currentTimeMillis(),
                 )
                 PersonaManager.save(persona)
                 PersonaManager.setActive(persona.id)

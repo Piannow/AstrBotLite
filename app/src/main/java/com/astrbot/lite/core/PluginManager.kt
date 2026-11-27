@@ -1,6 +1,8 @@
 package com.astrbot.lite.core
 
 import android.content.Context
+import com.astrbot.lite.core.AnimeDownloader
+import com.astrbot.lite.core.AnimeDownloader.AnimeEpisode
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -9,26 +11,24 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
-import com.astrbot.lite.core.AnimeDownloader
-import com.astrbot.lite.core.AnimeDownloader.AnimeEpisode
 
 /** 插件命中结果 */
 data class PluginHit(
     val handled: Boolean,
-    val reply: String?,       // 直接回复（非空则不再调用 AI）
+    val reply: String?, // 直接回复（非空则不再调用 AI）
     val extraPrompt: String?, // 追加的 AI 指令（prompt 型插件）
     val image: String? = null, // 图片直链（image 型插件）：非空则“拉图”下载后作为“图片消息”发出
     val rendered: ByteArray? = null, // 本地渲染出的 PNG 字节（render 型插件）：非空直接作为图片消息发出
     val media: ByteArray? = null, // 生成的/本地取出的图片字节（localimage 型）：非空作为图片消息发出
     val mediaExt: String = "png", // media 的图片扩展名
-    val buttons: String? = null   // 交互按钮行（JSON 数组，QQ keyboard.content.rows 结构）
+    val buttons: String? = null, // 交互按钮行（JSON 数组，QQ keyboard.content.rows 结构）
 )
 
 /** 可被 LLM 调用的技能（LLM 触发） */
 data class LlmSkill(
-    val name: String,   // 技能名，如 "/翻译"
+    val name: String, // 技能名，如 "/翻译"
     val desc: String,
-    val prompt: String  // 执行说明（交给 AI 完成该技能）
+    val prompt: String, // 执行说明（交给 AI 完成该技能）
 )
 
 /** 触发方式名称 */
@@ -36,7 +36,7 @@ val TRIGGER_NAMES = mapOf(
     "always" to "总是触发(hook)",
     "passive" to "被动触发(命令)",
     "llm" to "LLM触发(技能)",
-    "never" to "从不触发"
+    "never" to "从不触发",
 )
 
 /**
@@ -47,30 +47,39 @@ val TRIGGER_NAMES = mapOf(
  */
 object PluginManager {
     private lateinit var ctx: Context
+
     /** 插件安装根目录（1.7.193：未初始化时不再 lateinit 崩——ext 型插件的
      *  BotEngine 调用可能早于 App.onCreate 的 PluginManager.init，走内部目录兜底，功能不中断） */
     @Volatile private var dir: File? = null
     private const val HELP_PAGE_SIZE = 4
+
     /** 帮助分页状态：convKey -> 当前页码（仅在 /help 后有效，输入无关内容即清除） */
     private val helpPages = ConcurrentHashMap<String, Int>()
+
     /** 文生图并发锁：convKey -> 是否已有请求在途。同一会话已有出图在途时，新请求不排队、直接提示"正在出图" */
     private val t2iBusy = ConcurrentHashMap<String, Boolean>()
+
     /** 生视频并发锁：convKey -> 是否已有生成在途（视频耗时长，异步生成，不阻塞消息队列） */
     private val vBusy = ConcurrentHashMap<String, Boolean>()
+
     /**
      * 异步出图/出视频的投递回调（由 BotEngine 注入，避免 PluginManager 直接依赖 QQ 客户端）：
      * sessionKey 形如 "group:openid" / "c2c:openid"，BotEngine 解析后调用对应发送接口。
      */
     var videoDeliver: ((sessionKey: String, bytes: ByteArray, ext: String) -> Boolean)? = null
+
     /** 发链接模式：把视频直链用文本消息发出（避免大文件上传失败），由 BotEngine 注入 */
     var videoUrlDeliver: ((sessionKey: String, url: String) -> Boolean)? = null
+
     /** 异步生成失败时的通知（BotEngine 注入，给用户回一句失败原因） */
     var videoFailNotify: ((sessionKey: String, text: String) -> Unit)? = null
+
     /**
      * 通用异步回复（1.7.237）：后台线程查完数据后回“文字 + 可选封面图直链”。
      * 解决 gal/游戏等插件在消息线程里同步发 HTTP、把整条消息队列堵住的问题。
      */
     var asyncReply: ((sessionKey: String, text: String, imageUrl: String?) -> Unit)? = null
+
     /** 测试台观察者：控制台打开时订阅异步插件结果（修复“测试配置无法触发插件”——
      *  旧版测试模式 lastEvent 为空/client 为 null，异步结果只进日志，控制台永远看不到） */
     var testNotify: ((sessionKey: String, text: String) -> Unit)? = null
@@ -81,7 +90,7 @@ object PluginManager {
         val title: String = "",
         val episodes: List<AnimeEpisode> = emptyList(),
         /** 创建时间：与网盘会话并存时，纯数字按“谁最近活跃”仲裁归属 */
-        val createdAt: Long = System.currentTimeMillis()
+        val createdAt: Long = System.currentTimeMillis(),
     )
     private val pendingAnime = ConcurrentHashMap<String, AnimeSession>()
 
@@ -98,7 +107,7 @@ object PluginManager {
         val workName: String = "",
         val resources: List<GalEngine.GalRes> = emptyList(),
         /** 创建/最近活动时间：与网盘/番剧并存时，纯数字按“谁最近活跃”仲裁归属 */
-        val createdAt: Long = System.currentTimeMillis()
+        val createdAt: Long = System.currentTimeMillis(),
     )
     private val pendingGal = ConcurrentHashMap<String, GalSession>()
 
@@ -114,13 +123,14 @@ object PluginManager {
         val gameName: String = "",
         val versionInfo: String = "",
         val resources: List<GameEngine.GameRes> = emptyList(),
-        val createdAt: Long = System.currentTimeMillis()
+        val createdAt: Long = System.currentTimeMillis(),
     )
     private val pendingGame = ConcurrentHashMap<String, GameSession>()
 
     // ---------------- 图生图：会话最近图片（命令与图片分两条消息发也能关联） ----------------
     /** key=会话 → (图片URL列表, 收到时间)；用户先发图、再发命令时用上一张图做参照 */
     private val recentImages = ConcurrentHashMap<String, Pair<List<String>, Long>>()
+
     /** 最近图片有效期：10 分钟（QQ 图片 URL 有时效，且太久的图不该被当参照） */
     private const val RECENT_IMAGE_TTL_MS = 10 * 60 * 1000L
 
@@ -156,7 +166,15 @@ object PluginManager {
                 val ep = pending.episodes[idx - 1]
                 val raw = ep.url ?: ""
                 if (raw.isNotBlank()) {
-                    val playUrl = if (raw.startsWith("http://") || raw.startsWith("https://")) raw else try { AnimeDownloader.resolvePlayUrl(raw) } catch (_: Throwable) { null }
+                    val playUrl = if (raw.startsWith("http://") || raw.startsWith("https://")) {
+                        raw
+                    } else {
+                        try {
+                            AnimeDownloader.resolvePlayUrl(raw)
+                        } catch (_: Throwable) {
+                            null
+                        }
+                    }
                     if (playUrl.isNullOrBlank()) {
                         return PluginHit(true, "❌ 解析播放链接失败，请重选或发「取消」重新搜索。", null)
                     }
@@ -168,7 +186,7 @@ object PluginManager {
                         append("```\n$playUrl\n```\n")
                         append("\n（不可播时发「取消」重新搜索。）")
                     }
-                    Logs.info("[番剧] 选集 ${idx}/${pending.episodes.size} → ${ep.title}")
+                    Logs.info("[番剧] 选集 $idx/${pending.episodes.size} → ${ep.title}")
                     return PluginHit(true, reply, null)
                 }
                 return PluginHit(true, "\u274c 获取播放链接失败，请稍后重试。", null)
@@ -254,8 +272,10 @@ object PluginManager {
                             pg.items.isEmpty() -> asyncSend(key, "📄 「${g.keyword}」没有更多结果了。")
                             else -> {
                                 pendingGal[key] = g.copy(
-                                    total = pg.total, gte = pg.gte, resources = pg.items,
-                                    createdAt = System.currentTimeMillis()
+                                    total = pg.total,
+                                    gte = pg.gte,
+                                    resources = pg.items,
+                                    createdAt = System.currentTimeMillis(),
                                 )
                                 asyncSend(key, galResSearchReply(g.keyword, g.page, pg.total, pg.gte, pg.items))
                             }
@@ -265,7 +285,11 @@ object PluginManager {
                     Logs.err("[Gal] 刷新异常: ${e.message}")
                     asyncSend(key, "❌ 刷新出错：${e.message}")
                 }
-            }.apply { isDaemon = true; name = "gal-refresh"; start() }
+            }.apply {
+                isDaemon = true
+                name = "gal-refresh"
+                start()
+            }
             return PluginHit(true, if (g.stage == "work") "🔄 正在刷新资源列表…" else "🔄 正在刷新资源搜索…", null)
         }
         val n = text.toIntOrNull() ?: return null
@@ -288,7 +312,11 @@ object PluginManager {
                     Logs.err("[Gal] 详情异常: ${e.message}")
                     asyncSend(key, "❌ 查询作品详情出错：${e.message}")
                 }
-            }.apply { isDaemon = true; name = "gal-detail"; start() }
+            }.apply {
+                isDaemon = true
+                name = "gal-detail"
+                start()
+            }
             return PluginHit(true, "🔍 正在查询「${item.name}」…", null)
         }
         // work 阶段：数字取该资源直链
@@ -317,7 +345,11 @@ object PluginManager {
                 Logs.err("[Gal] 取直链异常: ${e.message}")
                 asyncSend(key, "❌ 取直链出错：${e.message}")
             }
-        }.apply { isDaemon = true; name = "gal-dl"; start() }
+        }.apply {
+            isDaemon = true
+            name = "gal-dl"
+            start()
+        }
         return PluginHit(true, "⏳ 正在取直链…", null)
     }
 
@@ -347,11 +379,16 @@ object PluginManager {
             val res = det.resources
             if (res.isEmpty()) {
                 pendingGame.remove(key)
-                return PluginHit(true, buildString {
-                    append("🎮 ${det.item.title}\n")
-                    append("📄 ${GameEngine.PAGE_BASE}${item.id}\n\n")
-                    append("❌ 该页暂无网盘资源链接（可能仅含 Steam/官网下载）")
-                }, null, image = null)
+                return PluginHit(
+                    true,
+                    buildString {
+                        append("🎮 ${det.item.title}\n")
+                        append("📄 ${GameEngine.PAGE_BASE}${item.id}\n\n")
+                        append("❌ 该页暂无网盘资源链接（可能仅含 Steam/官网下载）")
+                    },
+                    null,
+                    image = null,
+                )
             }
             pendingGame[key] = g.copy(
                 stage = "res",
@@ -359,7 +396,7 @@ object PluginManager {
                 gameName = item.title,
                 versionInfo = det.versionInfo,
                 resources = res,
-                createdAt = System.currentTimeMillis()
+                createdAt = System.currentTimeMillis(),
             )
             Logs.info("[游戏] 详情 ${item.id}「${item.title}」资源 ${res.size} 条")
             return PluginHit(true, gameResourcesReply(item.title, res, det.versionInfo, true), null)
@@ -378,26 +415,25 @@ object PluginManager {
         return PluginHit(true, reply, null)
     }
 
-    private fun gameResourcesReply(gameName: String, res: List<GameEngine.GameRes>, versionInfo: String, ok: Boolean): String =
-        buildString {
-            if (!ok) {
-                append("⚠️ 资源列表获取失败（站点繁忙），发「刷新」重试\n")
-                return@buildString
-            }
-            if (res.isEmpty()) {
-                append("📦 该游戏暂无网盘资源\n")
-                return@buildString
-            }
-            append("🎮 $gameName\n")
-            if (versionInfo.isNotBlank()) append("📝 版本：$versionInfo\n")
-            append("\n📦 网盘资源（${res.size}）：\n")
-            res.forEachIndexed { i, r ->
-                append(i + 1).append(". [").append(r.provider).append("]")
-                if (r.size.isNotBlank()) append(" · ${r.size}")
-                append("\n")
-            }
-            append("\n回复编号取网盘直链；「刷新」重试；「取消」退出")
+    private fun gameResourcesReply(gameName: String, res: List<GameEngine.GameRes>, versionInfo: String, ok: Boolean): String = buildString {
+        if (!ok) {
+            append("⚠️ 资源列表获取失败（站点繁忙），发「刷新」重试\n")
+            return@buildString
         }
+        if (res.isEmpty()) {
+            append("📦 该游戏暂无网盘资源\n")
+            return@buildString
+        }
+        append("🎮 $gameName\n")
+        if (versionInfo.isNotBlank()) append("📝 版本：$versionInfo\n")
+        append("\n📦 网盘资源（${res.size}）：\n")
+        res.forEachIndexed { i, r ->
+            append(i + 1).append(". [").append(r.provider).append("]")
+            if (r.size.isNotBlank()) append(" · ${r.size}")
+            append("\n")
+        }
+        append("\n回复编号取网盘直链；「刷新」重试；「取消」退出")
+    }
 
     private fun galResLine(i: Int, r: GalEngine.GalRes): String {
         val sb = StringBuilder()
@@ -413,59 +449,56 @@ object PluginManager {
     }
 
     /** 「找galgame资源」搜索结果页 */
-    private fun galResSearchReply(kw: String, page: Int, total: Int, gte: Boolean, items: List<GalEngine.GalRes>): String =
-        buildString {
-            append("📦 资源搜索「$kw」共 ${total}${if (gte) "+" else ""} 条 · 第 $page 页\n\n")
-            items.forEachIndexed { i, r ->
-                append(i + 1).append(". [").append(GalEngine.typeLabel(r.type)).append("] ")
-                append(r.workName.ifBlank { "未知作品" }.take(20))
-                if (r.title.isNotBlank()) append(" · ${r.title.take(24)}")
-                if (r.size.isNotBlank()) append(" · ${r.size}")
-                if (r.providers.isNotEmpty()) append(" · ").append(r.providers.joinToString("/"))
-                if (r.languages.isNotBlank()) append(" · ${r.languages}")
-                GalEngine.pwdHint(r.note)?.let { append(" · ").append(it) }
-                append(" · ").append(if (r.state == "valid") "✅有效" else "⚠️已失效")
-                append("\n")
-            }
-            append("\n回复编号取网盘直链；同关键词再发一次翻下一页；「取消」退出")
-        }
-
-    private fun galResourcesReply(workName: String, workId: String, res: List<GalEngine.GalRes>, ok: Boolean): String =
-        buildString {
-            if (!ok) {
-                append("⚠️ 资源列表获取失败（站点繁忙），发「刷新」重试\n")
-                return@buildString
-            }
-            if (res.isEmpty()) {
-                append("📦 该作品暂无资源\n")
-                return@buildString
-            }
-            append("📦 资源（${res.size}）：\n")
-            res.forEachIndexed { i, r -> append(galResLine(i + 1, r)).append("\n") }
-            append("回复资源编号取网盘直链；「刷新」重拉资源；「取消」退出")
-        }
-
-    private fun galDetailReply(det: GalEngine.GalDetail, workId: String, res: List<GalEngine.GalRes>, ok: Boolean): String =
-        buildString {
-            append("🎮 ${det.name}")
-            if (det.origin.isNotBlank()) append("（${det.origin}）")
+    private fun galResSearchReply(kw: String, page: Int, total: Int, gte: Boolean, items: List<GalEngine.GalRes>): String = buildString {
+        append("📦 资源搜索「$kw」共 ${total}${if (gte) "+" else ""} 条 · 第 $page 页\n\n")
+        items.forEachIndexed { i, r ->
+            append(i + 1).append(". [").append(GalEngine.typeLabel(r.type)).append("] ")
+            append(r.workName.ifBlank { "未知作品" }.take(20))
+            if (r.title.isNotBlank()) append(" · ${r.title.take(24)}")
+            if (r.size.isNotBlank()) append(" · ${r.size}")
+            if (r.providers.isNotEmpty()) append(" · ").append(r.providers.joinToString("/"))
+            if (r.languages.isNotBlank()) append(" · ${r.languages}")
+            GalEngine.pwdHint(r.note)?.let { append(" · ").append(it) }
+            append(" · ").append(if (r.state == "valid") "✅有效" else "⚠️已失效")
             append("\n")
-            if (det.aliases.isNotEmpty()) append("别名：${det.aliases.take(2).joinToString("、")}\n")
-            if (det.date.isNotBlank()) append("📅 发售 ${det.date}")
-            if (det.maker.isNotBlank()) append(if (det.date.isNotBlank()) " · 🏢 ${det.maker}" else "🏢 ${det.maker}")
-            append("\n")
-            val rating = det.rating?.let { r -> "⭐%.2f".format(r).trimEnd('0').trimEnd('.') }
-            append(if (rating != null) "$rating（${det.ratingCount} 评）" else "⭐ 暂无评分")
-            append(" · 👁 ${det.views} · ❤ ${det.likes}\n")
-            if (det.platforms.isNotBlank()) append("🖥 ${det.platforms}")
-            if (det.languages.isNotBlank()) {
-                if (det.platforms.isNotBlank()) append(" · ")
-                append("🌐 ${det.languages}")
-            }
-            if (det.platforms.isNotBlank() || det.languages.isNotBlank()) append("\n")
-            append("🔗 ${GalEngine.PAGE_BASE}$workId\n")
-            append(galResourcesReply(det.name, workId, res, ok))
         }
+        append("\n回复编号取网盘直链；同关键词再发一次翻下一页；「取消」退出")
+    }
+
+    private fun galResourcesReply(workName: String, workId: String, res: List<GalEngine.GalRes>, ok: Boolean): String = buildString {
+        if (!ok) {
+            append("⚠️ 资源列表获取失败（站点繁忙），发「刷新」重试\n")
+            return@buildString
+        }
+        if (res.isEmpty()) {
+            append("📦 该作品暂无资源\n")
+            return@buildString
+        }
+        append("📦 资源（${res.size}）：\n")
+        res.forEachIndexed { i, r -> append(galResLine(i + 1, r)).append("\n") }
+        append("回复资源编号取网盘直链；「刷新」重拉资源；「取消」退出")
+    }
+
+    private fun galDetailReply(det: GalEngine.GalDetail, workId: String, res: List<GalEngine.GalRes>, ok: Boolean): String = buildString {
+        append("🎮 ${det.name}")
+        if (det.origin.isNotBlank()) append("（${det.origin}）")
+        append("\n")
+        if (det.aliases.isNotEmpty()) append("别名：${det.aliases.take(2).joinToString("、")}\n")
+        if (det.date.isNotBlank()) append("📅 发售 ${det.date}")
+        if (det.maker.isNotBlank()) append(if (det.date.isNotBlank()) " · 🏢 ${det.maker}" else "🏢 ${det.maker}")
+        append("\n")
+        val rating = det.rating?.let { r -> "⭐%.2f".format(r).trimEnd('0').trimEnd('.') }
+        append(if (rating != null) "$rating（${det.ratingCount} 评）" else "⭐ 暂无评分")
+        append(" · 👁 ${det.views} · ❤ ${det.likes}\n")
+        if (det.platforms.isNotBlank()) append("🖥 ${det.platforms}")
+        if (det.languages.isNotBlank()) {
+            if (det.platforms.isNotBlank()) append(" · ")
+            append("🌐 ${det.languages}")
+        }
+        if (det.platforms.isNotBlank() || det.languages.isNotBlank()) append("\n")
+        append("🔗 ${GalEngine.PAGE_BASE}$workId\n")
+        append(galResourcesReply(det.name, workId, res, ok))
+    }
 
     /** 参照图取字节：http(s) 直连；content://（测试台选图）走 ContentResolver；file:// 读文件；上限 10MB */
     private fun fetchRefImage(url: String): ByteArray? = try {
@@ -537,7 +570,7 @@ object PluginManager {
             val updated = entry.copy(
                 enabled = existing.enabled,
                 // 文本替换升级：旧 rules（源→目标）一次性迁移进 find/replace 分对字段，老规则不丢
-                config = if (entry.id == "wordreplace") migrateWordReplaceConfig(existing.config, mergedCfg) else mergedCfg
+                config = if (entry.id == "wordreplace") migrateWordReplaceConfig(existing.config, mergedCfg) else mergedCfg,
             )
             File(pluginDir(entry.id), "plugin.json").writeText(updated.toJson())
         }
@@ -614,21 +647,18 @@ object PluginManager {
     fun isEnabled(id: String): Boolean = installed(id)?.enabled == true
 
     /** 把插件的 config 读成 key→value（引擎读取配置用） */
-    fun configMap(id: String): Map<String, String> =
-        installed(id)?.config?.associate { it.key to it.value } ?: emptyMap()
+    fun configMap(id: String): Map<String, String> = installed(id)?.config?.associate { it.key to it.value } ?: emptyMap()
 
     private fun pluginDir(id: String): File = File(dir(), id)
 
     /** 安全解析插件目录内的子路径：拒绝绝对路径与 .. 越界（zip 条目与资产路径不可信） */
-    private fun safeChild(target: File, rel: String): File? {
-        return try {
-            val f = File(target, rel.replace('\\', '/'))
-            val base = target.canonicalPath
-            val path = f.canonicalPath
-            if (path == base || path.startsWith(base + File.separator)) f else null
-        } catch (_: Exception) {
-            null
-        }
+    private fun safeChild(target: File, rel: String): File? = try {
+        val f = File(target, rel.replace('\\', '/'))
+        val base = target.canonicalPath
+        val path = f.canonicalPath
+        if (path == base || path.startsWith(base + File.separator)) f else null
+    } catch (_: Exception) {
+        null
     }
 
     /** 从市场条目安装（可下载 zip，也可直接写配置）；走断点续传，失败/取消清理残留不留半成品 */
@@ -663,7 +693,7 @@ object PluginManager {
                         } else {
                             InstallProgress.update("下载 $kbSpeed ${done / 1024} KB", 10)
                         }
-                    }
+                    },
                 )
                 if (bytes == null) {
                     cleanupInstall(entry.id, backup)
@@ -737,7 +767,11 @@ object PluginManager {
     fun uninstall(id: String, onProgress: (Int, String, Int, Int) -> Unit): Boolean {
         pluginSkillCache.remove(id)
         val liteDir = pluginDir(id)
-        val pyDir = try { com.astrbot.lite.core.PythonRuntime.pluginDir(id) } catch (_: Exception) { null }
+        val pyDir = try {
+            com.astrbot.lite.core.PythonRuntime.pluginDir(id)
+        } catch (_: Exception) {
+            null
+        }
         // 收集全部待删文件（两目录树），用于百分比 + 明细
         val allFiles = ArrayList<java.io.File>()
         fun walk(root: java.io.File?) {
@@ -762,13 +796,15 @@ object PluginManager {
             }
             done++
             val pct = if (total > 0) done * 95 / total else 95
-            onProgress(pct, f.name, done, total)   // 到 95%（留 5% 给删空目录 + Python 环境收尾）
+            onProgress(pct, f.name, done, total) // 到 95%（留 5% 给删空目录 + Python 环境收尾）
         }
         // 收尾：删空目录（两棵树自下而上删目录节点）
         fun pruneDirs(root: java.io.File?) {
             root?.let { r ->
                 r.walkBottomUp().forEach { d ->
-                    try { d.delete() } catch (_: Exception) {}
+                    try {
+                        d.delete()
+                    } catch (_: Exception) {}
                 }
             }
         }
@@ -884,7 +920,11 @@ object PluginManager {
                 InstallProgress.finish(false, "转换失败：未找到可转换的内容")
                 return false
             }
-            pid = try { org.json.JSONObject(jsonText).optString("id") } catch (_: Exception) { "" }
+            pid = try {
+                org.json.JSONObject(jsonText).optString("id")
+            } catch (_: Exception) {
+                ""
+            }
             // 1.7.201：安装前备份已有同名插件，失败/取消时恢复，成功时丢弃
             backup = if (pid.isNotEmpty()) backupExistingPlugin(pid) else null
             if (InstallProgress.isCancelled()) {
@@ -927,31 +967,29 @@ object PluginManager {
     }
 
     /** 把 plugin.json 文本安装为本地插件；assets 为随插件持久化的二进制资产（相对路径 → 字节） */
-    fun installPluginJson(json: String, assets: Map<String, ByteArray> = emptyMap()): Boolean {
-        return try {
-            val p = PluginInfo.fromJson(json)
-            val target = pluginDir(p.id)
-            target.mkdirs()
-            File(target, "plugin.json").writeText(p.copy(enabled = true).toJson())
-            for ((rel, bytes) in assets) {
-                if (rel.isBlank() || bytes.isEmpty()) continue
-                val f = safeChild(target, rel)
-                if (f == null) {
-                    Logs.warn("插件资产路径越界，已跳过: $rel")
-                    continue
-                }
-                f.parentFile?.mkdirs()
-                f.writeBytes(bytes)
+    fun installPluginJson(json: String, assets: Map<String, ByteArray> = emptyMap()): Boolean = try {
+        val p = PluginInfo.fromJson(json)
+        val target = pluginDir(p.id)
+        target.mkdirs()
+        File(target, "plugin.json").writeText(p.copy(enabled = true).toJson())
+        for ((rel, bytes) in assets) {
+            if (rel.isBlank() || bytes.isEmpty()) continue
+            val f = safeChild(target, rel)
+            if (f == null) {
+                Logs.warn("插件资产路径越界，已跳过: $rel")
+                continue
             }
-            if (assets.isNotEmpty()) Logs.info("插件资产已持久化 ${assets.size} 项")
-            pluginSkillCache.remove(p.id)
-            Logs.info("插件“${p.name} v${p.version}”安装成功")
-            QQPanelSync.requestSync()
-            true
-        } catch (e: Exception) {
-            Logs.err("安装插件失败: ${e.message}")
-            false
+            f.parentFile?.mkdirs()
+            f.writeBytes(bytes)
         }
+        if (assets.isNotEmpty()) Logs.info("插件资产已持久化 ${assets.size} 项")
+        pluginSkillCache.remove(p.id)
+        Logs.info("插件“${p.name} v${p.version}”安装成功")
+        QQPanelSync.requestSync()
+        true
+    } catch (e: Exception) {
+        Logs.err("安装插件失败: ${e.message}")
+        false
     }
 
     /**
@@ -1111,7 +1149,7 @@ object PluginManager {
                 },
                 shouldCancel = { InstallProgress.isCancelled() },
                 // 只换阶段文案，不重置百分比（旧版 update(stage, 0) 会让进度条中途退回 0）
-                onSourceChange = { stage -> InstallProgress.stageFor(taskId, stage) }
+                onSourceChange = { stage -> InstallProgress.stageFor(taskId, stage) },
             )
             if (bytes == null) {
                 Logs.err("插件 ${entry.shownName} 下载失败：$zipUrl")
@@ -1124,13 +1162,15 @@ object PluginManager {
             // ① 原始 zip 装进统一 Python 环境（共享 site-packages，不转换）
             val pyOk = try {
                 InstallProgress.update("写入 Python 统一环境…", 46)
-                val ok = PythonRuntime.installZip(pid, bytes,
+                val ok = PythonRuntime.installZip(
+                    pid,
+                    bytes,
                     onEntry = { done, total ->
                         if (InstallProgress.isCancelled()) return@installZip
                         val pct = if (total > 0) 46 + done * 14 / total else 52
                         InstallProgress.update("写入 Python 统一环境 $done/$total", pct.coerceIn(46, 60))
                     },
-                    shouldCancel = { InstallProgress.isCancelled() }
+                    shouldCancel = { InstallProgress.isCancelled() },
                 )
                 if (InstallProgress.isCancelled()) {
                     // 解压中途取消：installZip 循环已停，这里清理+终态
@@ -1169,16 +1209,23 @@ object PluginManager {
                     put("type", "python")
                     put("trigger", "passive")
                     put("enabled", true)
-                    put("commands", org.json.JSONArray().put(org.json.JSONObject().apply {
-                        put("match", pid)
-                        put("type", "prefix")
-                    }))
+                    put(
+                        "commands",
+                        org.json.JSONArray().put(
+                            org.json.JSONObject().apply {
+                                put("match", pid)
+                                put("type", "prefix")
+                            },
+                        ),
+                    )
                     put("config", org.json.JSONArray())
                     put("doc", "该插件以原生 Python 运行于统一 Python 环境；输入「$pid <参数>」触发。")
                 }
                 installPluginJson(fallback.toString(), emptyMap())
                 // 1.7.147：fallback 分支的 id=pid（直接是目录名），别名登记防御性补上（幂等，同值跳过）
-                try { PythonRuntime.putAlias(pid, pid) } catch (_: Exception) {}
+                try {
+                    PythonRuntime.putAlias(pid, pid)
+                } catch (_: Exception) {}
                 return finishAstrBotInstall(pid, entry.shownName, pyOk, backup)
             }
             // 转换成功：把 type 标为 python，Lite 目录 id 强制用 pid（让 Lite / Python / backup 键统一）。
@@ -1241,7 +1288,7 @@ object PluginManager {
             // 远程目录
             try {
                 val resp = http.newCall(
-                    Request.Builder().url(Config.pluginCatalogUrl).build()
+                    Request.Builder().url(Config.pluginCatalogUrl).build(),
                 ).execute()
                 if (!resp.isSuccessful) throw Exception("HTTP ${resp.code}")
                 resp.body?.string() ?: ""
@@ -1260,7 +1307,7 @@ object PluginManager {
                 val id = obj.optString("id")
                 val installedP = installed(id)
                 val merged = PluginInfo.fromJson(obj).copy(
-                    enabled = installedP?.enabled ?: obj.optBoolean("enabled", true)
+                    enabled = installedP?.enabled ?: obj.optBoolean("enabled", true),
                 )
                 list.add(merged)
             }
@@ -1325,20 +1372,20 @@ object PluginManager {
     /** 执行型插件能真正干活（出图/网盘/番剧等）；prompt 型只把话交给 AI（撞车时最易“抢错”） */
     private fun execPriority(type: String): Int = when (type) {
         "netdisk", "anime", "image2image", "text2image", "imageengine",
-        "video", "render", "localimage", "image", "webhook", "galgame", "game" -> 0
+        "video", "render", "localimage", "image", "webhook", "galgame", "game",
+        -> 0
         "reply" -> 1
         else -> 2 // prompt 等
     }
 
     /** 选优：执行型优先 > 命令更长（更具体）> id 字典序（稳定，不再随目录顺序漂移） */
-    private fun pickCandidate(cands: List<Pair<PluginInfo, PluginCommand>>): Pair<PluginInfo, PluginCommand>? =
-        cands.minWithOrNull(
-            compareBy(
-                { execPriority(it.first.type) },
-                { -it.second.match.trim().length },
-                { it.first.id }
-            )
-        )
+    private fun pickCandidate(cands: List<Pair<PluginInfo, PluginCommand>>): Pair<PluginInfo, PluginCommand>? = cands.minWithOrNull(
+        compareBy(
+            { execPriority(it.first.type) },
+            { -it.second.match.trim().length },
+            { it.first.id },
+        ),
+    )
 
     /**
      * 被动触发（命令）命中检测：只匹配 trigger=passive 的已启用插件。
@@ -1361,17 +1408,20 @@ object PluginManager {
         if (text.startsWith("/") && text.length > 1) {
             val stripped = text.substring(1)
             val hit = installed().any { p ->
-                p.enabled && p.trigger == "passive" && p.type != "builtin" && p.commands.any { c ->
-                    val m = c.match.trim()
-                    when {
-                        m.isEmpty() -> false
-                        // 1.7.56：正则命令（网盘的 搜索/搜/找 等）也认 / 前缀写法——
-                        // 旧版跳过 re: 导致「/找 关键词」既不归一化、正则又匹配不上，直接落空进 AI
-                        m.startsWith("re:") -> safeRegex(m.substring(3))?.matches(stripped) ?: false
-                        m.startsWith("/") -> false // 自带斜杠的命令走原生匹配
-                        else -> commandMatches(stripped, m)
+                p.enabled &&
+                    p.trigger == "passive" &&
+                    p.type != "builtin" &&
+                    p.commands.any { c ->
+                        val m = c.match.trim()
+                        when {
+                            m.isEmpty() -> false
+                            // 1.7.56：正则命令（网盘的 搜索/搜/找 等）也认 / 前缀写法——
+                            // 旧版跳过 re: 导致「/找 关键词」既不归一化、正则又匹配不上，直接落空进 AI
+                            m.startsWith("re:") -> safeRegex(m.substring(3))?.matches(stripped) ?: false
+                            m.startsWith("/") -> false // 自带斜杠的命令走原生匹配
+                            else -> commandMatches(stripped, m)
+                        }
                     }
-                }
             }
             if (hit) {
                 Logs.info("[插件] /命令 归一化：「$text」→「$stripped」")
@@ -1391,7 +1441,7 @@ object PluginManager {
                 if (ndOn) "网盘" to Netdisk.lastActiveAt else null,
                 anime?.let { "番剧" to it.createdAt },
                 gal?.let { "Galgame" to it.createdAt },
-                game?.let { "游戏" to it.createdAt }
+                game?.let { "游戏" to it.createdAt },
             ).maxByOrNull { it.second }?.first
             when (owner) {
                 "网盘" -> {
@@ -1440,7 +1490,8 @@ object PluginManager {
         // 网盘会话内的控制词：% 回退 / 回退 / 返回 / 搜索xxx / 找xxx（全网搜索/翻页）。
         // 这些不是插件命令（不进 commands，免得污染帮助、误匹配日常话语），
         // 但也必须在这里放行——否则永远到不了 Netdisk，% 回退就是不触发（同一个坑）。
-        if (sessionKey != null && Netdisk.isControlText(text) &&
+        if (sessionKey != null &&
+            Netdisk.isControlText(text) &&
             (Netdisk.hasSession(sessionKey) || Netdisk.hasGlobalSearch(sessionKey))
         ) {
             Logs.info("[插件] 网盘助手：会话控制 ${text.take(20)}")
@@ -1479,478 +1530,514 @@ object PluginManager {
             val c = chosen.second
             val m = c.match.trim()
             if (c.match.trim().isNotEmpty()) {
-                    // netdisk 型：网盘助手（列目录/进目录/取直链）
-                    if (p.type == "netdisk") {
-                        Logs.info("[插件] 命中 ${p.name} v${p.version}（网盘助手）命令: $m")
-                        val reply = Netdisk.handle(sessionKey ?: "default", text, p.config)
-                        return PluginHit(true, reply, null)
+                // netdisk 型：网盘助手（列目录/进目录/取直链）
+                if (p.type == "netdisk") {
+                    Logs.info("[插件] 命中 ${p.name} v${p.version}（网盘助手）命令: $m")
+                    val reply = Netdisk.handle(sessionKey ?: "default", text, p.config)
+                    return PluginHit(true, reply, null)
+                }
+                // anime 型：番剧搜索与播放（云播版）
+                if (p.type == "anime") {
+                    Logs.info("[插件] 命中 ${p.name} v${p.version}（番剧）命令: $m")
+                    val key = sessionKey ?: "default"
+                    val argStr = text.removePrefix(m.trim()).trim()
+                    val pending = pendingAnime[key]
+                    if (pending != null) {
+                        // 待选状态：数字=选集 / 取消 / 返回 null=新关键词重搜
+                        val hit = handleAnimePending(key, argStr)
+                        if (hit != null) return hit
                     }
-                    // anime 型：番剧搜索与播放（云播版）
-                    if (p.type == "anime") {
-                        Logs.info("[插件] 命中 ${p.name} v${p.version}（番剧）命令: $m")
-                        val key = sessionKey ?: "default"
-                        val argStr = text.removePrefix(m.trim()).trim()
-                        val pending = pendingAnime[key]
-                        if (pending != null) {
-                            // 待选状态：数字=选集 / 取消 / 返回 null=新关键词重搜
-                            val hit = handleAnimePending(key, argStr)
-                            if (hit != null) return hit
+                    if (argStr.isBlank() || argStr.length < 2) {
+                        return PluginHit(true, "❌ 请输入番剧名称，例如：「看番 鬼灭之刃」", null)
+                    }
+                    val query = argStr
+                    Thread {
+                        // 云播搜索（isyour.love 官方接口），永远取第 1 条结果进选集
+                        val iy = AnimeDownloader.isyourSearch(query)
+                        if (iy.isEmpty()) {
+                            videoFailNotify?.invoke(key, "❌ 未找到「$query」，换个关键词试试")
+                        } else {
+                            // 补集标题：云播源只有「第01集」，用 B 站接口（无需登录）按完整片名搜，集数对齐才采用；失败不阻塞
+                            val first = iy.first()
+                            val titles = AnimeDownloader.fetchEpisodeTitles(first.name.ifBlank { query }, first.eps.size)
+                            val hit = iyFirstPick(key, query, first, titles)
+                            videoFailNotify?.invoke(key, hit.reply ?: "")
                         }
-                        if (argStr.isBlank() || argStr.length < 2) {
-                            return PluginHit(true, "❌ 请输入番剧名称，例如：「看番 鬼灭之刃」", null)
+                    }.apply {
+                        isDaemon = true
+                        name = "anime-search"
+                        start()
+                    }
+                    return PluginHit(true, "🔍 搜索「$query」中...", null)
+                }
+                // webhook 型：调用外部接口
+                if (p.type == "webhook" && p.webhookUrl.isNotBlank()) {
+                    Logs.info("[插件] 命中 ${p.name}（webhook）→ ${p.webhookUrl.take(60)}")
+                    val reply = callWebhook(p.webhookUrl, text)
+                    return PluginHit(true, reply, null)
+                }
+                // image 型：发图/拉图——随机取一张配置里的图片直链，先拉图下载再作为图片消息发出
+                if (p.type == "image") {
+                    val src = p.config.firstOrNull { it.key == "imageUrl" || it.key == "images" }?.value?.trim().orEmpty()
+                    val urls = src.split(Regex("[,\\n\\r]")).map { it.trim() }.filter { it.isNotBlank() }
+                    val url = urls.randomOrNull()
+                    if (url == null) {
+                        Logs.info("[插件] 命中 ${p.name}（图片/发图拉图）但未配置图片直链")
+                        return PluginHit(true, "还没配置图片直链：去插件页的「配置」里填图片地址（一行一个或用逗号分隔），我就能帮你发图啦。", null)
+                    }
+                    Logs.info("[插件] 命中 ${p.name}（图片/发图拉图）→ ${url.take(60)}（共 ${urls.size} 张，随机取一张）")
+                    return PluginHit(true, null, null, url)
+                }
+                // render 型：本地渲染举牌/文字图——取命令后的文字，画到底图上渲染成图片消息发出
+                if (p.type == "render") {
+                    val noSlash = if (m.startsWith("/")) m.substring(1) else m
+                    val userText = when {
+                        text.startsWith(m) -> text.substring(m.length)
+                        text.startsWith(noSlash) -> text.substring(noSlash.length)
+                        else -> ""
+                    }.trim().removePrefix(":").trim()
+                    if (userText.isEmpty()) {
+                        Logs.info("[插件] 命中 ${p.name}（本地渲染）缺少文字，提示用法")
+                        return PluginHit(true, "请输入要举牌的文字。用法：$noSlash <你的话>", null)
+                    }
+                    Logs.info("[插件] 命中 ${p.name}（本地渲染）→ ${userText.take(40)}")
+                    val png = renderMeme(p.id, userText)
+                    if (png == null) {
+                        return PluginHit(true, "抱歉，举牌图没生成成功（多半是底图没随插件一起装进来）。可以先到插件页重装一次这个插件，再发一次试试。", null)
+                    }
+                    return PluginHit(true, null, null, null, png)
+                }
+                // localimage 型：自带图片——随机取一张随插件持久化的本地图片，直接作为图片消息发出（无需联网/配置）
+                if (p.type == "localimage") {
+                    val picked = pickLocalImage(p.id)
+                    if (picked == null) {
+                        Logs.info("[插件] 命中 ${p.name}（自带图片）但暂无可用本地图片")
+                        return PluginHit(true, "这个插件还没有可用的自带图片，先到插件页重装一次让它把图片带进来，再发一次试试。", null)
+                    }
+                    Logs.info("[插件] 命中 ${p.name}（自带图片）→ ${picked.second}（${picked.first.size} 字节）")
+                    return PluginHit(true, null, null, null, null, picked.first, picked.second)
+                }
+                // text2image 型：联网文生图——取命令后的描述，调外部 AI 出图服务生成图片发出
+                if (p.type == "text2image") {
+                    val noSlash = if (m.startsWith("/")) m.substring(1) else m
+                    val prompt = when {
+                        text.startsWith(m) -> text.substring(m.length)
+                        text.startsWith(noSlash) -> text.substring(noSlash.length)
+                        else -> ""
+                    }.trim().removePrefix(":").trim()
+                    if (prompt.isEmpty()) {
+                        Logs.info("[插件] 命中 ${p.name}（文生图）缺少描述，提示用法")
+                        return PluginHit(true, "请描述你想画的画面。用法：$noSlash <画面描述>", null)
+                    }
+                    // 并发锁：同一会话已有文生图请求在途（generate 同步阻塞期间），新请求不排队、不并发、直接提示
+                    val key = sessionKey ?: "*"
+                    if (t2iBusy.putIfAbsent(key, true) == true) {
+                        Logs.info("[插件] 命中 ${p.name}（文生图）但本会话已有出图在途，忽略并提示")
+                        return PluginHit(true, "正在出图，请稍候，出图完成前这条不再重复触发。", null)
+                    }
+                    Logs.info("[插件] 命中 ${p.name}（文生图）→ ${prompt.take(40)}")
+                    val gen = try {
+                        ImageGenEngine.generate(prompt, p.id)
+                    } finally {
+                        // 出图本身成功/失败都要释放锁（generate 返回后本次阻塞结束）
+                        t2iBusy.remove(key)
+                    }
+                    if (gen == null) {
+                        // 自带诊断：说清当前配置走的是哪一层、缺什么，下一次报错即可定位
+                        val poolEntry = if (Config.aiPoolEnabled) AiPool.mediaEntry("image") else null
+                        val diag = if (poolEntry != null) {
+                            "配置来源=AI池条目「${poolEntry.name}」（地址${if (poolEntry.baseUrl.isBlank()) "空✗" else "✓"} " +
+                                "密钥${if (poolEntry.apiKey.isBlank()) "空✗" else "✓"} 模型${if (poolEntry.model.isBlank()) "空✗" else "✓"}）"
+                        } else {
+                            val cm = PluginManager.configMap(p.id)
+                            "配置来源=插件配置（地址${if ((cm["baseUrl"] ?: "").isBlank()) "空✗" else "✓"} " +
+                                "密钥${if ((cm["apiKey"] ?: "").isBlank()) "空✗" else "✓"} " +
+                                "模型${if ((cm["model"] ?: "").isBlank()) "空✗" else "✓"}）"
                         }
-                        val query = argStr
-                        Thread {
-                            // 云播搜索（isyour.love 官方接口），永远取第 1 条结果进选集
-                            val iy = AnimeDownloader.isyourSearch(query)
-                            if (iy.isEmpty()) {
-                                videoFailNotify?.invoke(key, "❌ 未找到「$query」，换个关键词试试")
-                            } else {
-                                // 补集标题：云播源只有「第01集」，用 B 站接口（无需登录）按完整片名搜，集数对齐才采用；失败不阻塞
-                                val first = iy.first()
-                                val titles = AnimeDownloader.fetchEpisodeTitles(first.name.ifBlank { query }, first.eps.size)
-                                val hit = iyFirstPick(key, query, first, titles)
-                                videoFailNotify?.invoke(key, hit.reply ?: "")
-                            }
-                        }.apply { isDaemon = true; name = "anime-search"; start() }
-                        return PluginHit(true, "🔍 搜索「$query」中...", null)
+                        Logs.warn("[文生图] 生成失败 · $diag")
+                        return PluginHit(
+                            true,
+                            "文生图没成功。$diag\n请到 插件页→文生图→配置（或 设置→AI池）把空缺项补齐后重试；仍失败则看服务地址是否可访问。",
+                            null,
+                        )
                     }
-                    // webhook 型：调用外部接口
-                    if (p.type == "webhook" && p.webhookUrl.isNotBlank()) {
-                        Logs.info("[插件] 命中 ${p.name}（webhook）→ ${p.webhookUrl.take(60)}")
-                        val reply = callWebhook(p.webhookUrl, text)
-                        return PluginHit(true, reply, null)
-                    }
-                    // image 型：发图/拉图——随机取一张配置里的图片直链，先拉图下载再作为图片消息发出
-                    if (p.type == "image") {
+                    // 出图字节走内存（不落盘），PluginHit.media 承载；BotEngine 发送后 hit 局部变量释放，字节数组随之 GC 回收
+                    return PluginHit(true, null, null, null, null, gen.first, gen.second)
+                }
+                // imageengine 型：统一图片引擎——按命令分发到 文生图/发图拉图/举牌
+                if (p.type == "imageengine") {
+                    val key = sessionKey ?: "*"
+                    val noSlash = if (m.startsWith("/")) m.substring(1) else m
+                    val arg = when {
+                        text.startsWith(m) -> text.substring(m.length)
+                        text.startsWith(noSlash) -> text.substring(noSlash.length)
+                        else -> ""
+                    }.trim().removePrefix(":").trim()
+                    val cmd = noSlash
+                    // ① 发图拉图：随机取一张配置里的图片直链，先拉图下载再作为图片消息发出
+                    if (cmd in setOf("表情包", "图片", "发图")) {
                         val src = p.config.firstOrNull { it.key == "imageUrl" || it.key == "images" }?.value?.trim().orEmpty()
                         val urls = src.split(Regex("[,\\n\\r]")).map { it.trim() }.filter { it.isNotBlank() }
                         val url = urls.randomOrNull()
                         if (url == null) {
-                            Logs.info("[插件] 命中 ${p.name}（图片/发图拉图）但未配置图片直链")
-                            return PluginHit(true, "还没配置图片直链：去插件页的「配置」里填图片地址（一行一个或用逗号分隔），我就能帮你发图啦。", null)
+                            Logs.info("[插件] 命中 ${p.name}（发图拉图）但未配置图片直链")
+                            return PluginHit(true, "还没配置图片直链：去「图片引擎」插件的配置里填图片地址（一行一个或用逗号分隔），我就能帮你发图啦。", null)
                         }
-                        Logs.info("[插件] 命中 ${p.name}（图片/发图拉图）→ ${url.take(60)}（共 ${urls.size} 张，随机取一张）")
+                        Logs.info("[插件] 命中 ${p.name}（发图拉图）→ ${url.take(60)}（共 ${urls.size} 张，随机取一张）")
                         return PluginHit(true, null, null, url)
                     }
-                    // render 型：本地渲染举牌/文字图——取命令后的文字，画到底图上渲染成图片消息发出
-                    if (p.type == "render") {
-                        val noSlash = if (m.startsWith("/")) m.substring(1) else m
-                        val userText = when {
-                            text.startsWith(m) -> text.substring(m.length)
-                            text.startsWith(noSlash) -> text.substring(noSlash.length)
-                            else -> ""
-                        }.trim().removePrefix(":").trim()
-                        if (userText.isEmpty()) {
-                            Logs.info("[插件] 命中 ${p.name}（本地渲染）缺少文字，提示用法")
+                    // ② 举牌/文字图：本地渲染——取命令后的文字画到底图上
+                    if (cmd in setOf("举牌", "文字图")) {
+                        if (arg.isEmpty()) {
+                            Logs.info("[插件] 命中 ${p.name}（举牌）缺少文字，提示用法")
                             return PluginHit(true, "请输入要举牌的文字。用法：$noSlash <你的话>", null)
                         }
-                        Logs.info("[插件] 命中 ${p.name}（本地渲染）→ ${userText.take(40)}")
-                        val png = renderMeme(p.id, userText)
+                        Logs.info("[插件] 命中 ${p.name}（举牌）→ ${arg.take(40)}")
+                        val png = renderMeme(p.id, arg)
                         if (png == null) {
-                            return PluginHit(true, "抱歉，举牌图没生成成功（多半是底图没随插件一起装进来）。可以先到插件页重装一次这个插件，再发一次试试。", null)
+                            return PluginHit(true, "抱歉，举牌图没生成成功（多半是底图没配置）。可以到「图片引擎」插件的配置里填好底图（template），再发一次试试。", null)
                         }
                         return PluginHit(true, null, null, null, png)
                     }
-                    // localimage 型：自带图片——随机取一张随插件持久化的本地图片，直接作为图片消息发出（无需联网/配置）
-                    if (p.type == "localimage") {
-                        val picked = pickLocalImage(p.id)
-                        if (picked == null) {
-                            Logs.info("[插件] 命中 ${p.name}（自带图片）但暂无可用本地图片")
-                            return PluginHit(true, "这个插件还没有可用的自带图片，先到插件页重装一次让它把图片带进来，再发一次试试。", null)
-                        }
-                        Logs.info("[插件] 命中 ${p.name}（自带图片）→ ${picked.second}（${picked.first.size} 字节）")
-                        return PluginHit(true, null, null, null, null, picked.first, picked.second)
+                    // ③ 文生图 / 图生图：默认命令（画图/文生图/draw/画一张）
+                    //    本条消息若附带了图片（或引用了图片）→ 走图生图（参照该图风格出图）；否则走文生图
+                    if (arg.isEmpty()) {
+                        Logs.info("[插件] 命中 ${p.name}（出图）缺少描述，提示用法")
+                        return PluginHit(true, "请描述你想画的画面。用法：$noSlash <画面描述>（可附带图片做参照）", null)
                     }
-                    // text2image 型：联网文生图——取命令后的描述，调外部 AI 出图服务生成图片发出
-                    if (p.type == "text2image") {
-                        val noSlash = if (m.startsWith("/")) m.substring(1) else m
-                        val prompt = when {
-                            text.startsWith(m) -> text.substring(m.length)
-                            text.startsWith(noSlash) -> text.substring(noSlash.length)
-                            else -> ""
-                        }.trim().removePrefix(":").trim()
-                        if (prompt.isEmpty()) {
-                            Logs.info("[插件] 命中 ${p.name}（文生图）缺少描述，提示用法")
-                            return PluginHit(true, "请描述你想画的画面。用法：$noSlash <画面描述>", null)
+                    if (t2iBusy.putIfAbsent(key, true) == true) {
+                        Logs.info("[插件] 命中 ${p.name}（出图）但本会话已有出图在途，忽略并提示")
+                        return PluginHit(true, "正在出图，请稍候，出图完成前这条不再重复触发。", null)
+                    }
+                    try {
+                        // 1.7.91 图生图修复：恢复参照生成——附图/引用图/会话近图（10 分钟内）
+                        // 任一存在即先走图生图三级级联；失败回退纯文生图（不阻断出图）
+                        val i2iUrl = ev?.imageUrls?.firstOrNull() ?: recentImage(key)
+                        if (!i2iUrl.isNullOrBlank()) {
+                            Logs.info("[插件] 命中 ${p.name}（图生图）→ 参照 ${i2iUrl.take(48)} + 描述 ${arg.take(40)}")
+                            val i2i = ImageGenEngine.generateFromImageUrl(i2iUrl, arg, p.id, ctx)
+                            if (i2i != null) {
+                                return PluginHit(true, null, null, null, null, i2i.first, i2i.second)
+                            }
+                            Logs.warn("[图生图] 参照生成三级均失败，回退纯文生图")
                         }
-                        // 并发锁：同一会话已有文生图请求在途（generate 同步阻塞期间），新请求不排队、不并发、直接提示
-                        val key = sessionKey ?: "*"
-                        if (t2iBusy.putIfAbsent(key, true) == true) {
-                            Logs.info("[插件] 命中 ${p.name}（文生图）但本会话已有出图在途，忽略并提示")
-                            return PluginHit(true, "正在出图，请稍候，出图完成前这条不再重复触发。", null)
-                        }
-                        Logs.info("[插件] 命中 ${p.name}（文生图）→ ${prompt.take(40)}")
-                        val gen = try {
-                            ImageGenEngine.generate(prompt, p.id)
-                        } finally {
-                            // 出图本身成功/失败都要释放锁（generate 返回后本次阻塞结束）
-                            t2iBusy.remove(key)
-                        }
+                        Logs.info("[插件] 命中 ${p.name}（文生图）→ ${arg.take(40)}")
+                        val gen = ImageGenEngine.generate(arg, p.id)
                         if (gen == null) {
-                            // 自带诊断：说清当前配置走的是哪一层、缺什么，下一次报错即可定位
-                            val poolEntry = if (Config.aiPoolEnabled) AiPool.mediaEntry("image") else null
-                            val diag = if (poolEntry != null) {
-                                "配置来源=AI池条目「${poolEntry.name}」（地址${if (poolEntry.baseUrl.isBlank()) "空✗" else "✓"} " +
-                                    "密钥${if (poolEntry.apiKey.isBlank()) "空✗" else "✓"} 模型${if (poolEntry.model.isBlank()) "空✗" else "✓"}）"
-                            } else {
-                                val cm = PluginManager.configMap(p.id)
-                                "配置来源=插件配置（地址${if ((cm["baseUrl"] ?: "").isBlank()) "空✗" else "✓"} " +
-                                    "密钥${if ((cm["apiKey"] ?: "").isBlank()) "空✗" else "✓"} " +
-                                    "模型${if ((cm["model"] ?: "").isBlank()) "空✗" else "✓"}）"
-                            }
-                            Logs.warn("[文生图] 生成失败 · $diag")
-                            return PluginHit(
-                                true,
-                                "文生图没成功。$diag\n请到 插件页→文生图→配置（或 设置→AI池）把空缺项补齐后重试；仍失败则看服务地址是否可访问。",
-                                null
-                            )
+                            return PluginHit(true, "出图没成功：请确认已在「图片引擎」插件配置里填好服务地址/密钥/模型，或稍后再试一次。", null)
                         }
-                        // 出图字节走内存（不落盘），PluginHit.media 承载；BotEngine 发送后 hit 局部变量释放，字节数组随之 GC 回收
                         return PluginHit(true, null, null, null, null, gen.first, gen.second)
+                    } finally {
+                        // 出图成功/失败/回退都要释放锁
+                        t2iBusy.remove(key)
                     }
-                    // imageengine 型：统一图片引擎——按命令分发到 文生图/发图拉图/举牌
-                    if (p.type == "imageengine") {
-                        val key = sessionKey ?: "*"
-                        val noSlash = if (m.startsWith("/")) m.substring(1) else m
-                        val arg = when {
-                            text.startsWith(m) -> text.substring(m.length)
-                            text.startsWith(noSlash) -> text.substring(noSlash.length)
-                            else -> ""
-                        }.trim().removePrefix(":").trim()
-                        val cmd = noSlash
-                        // ① 发图拉图：随机取一张配置里的图片直链，先拉图下载再作为图片消息发出
-                        if (cmd in setOf("表情包", "图片", "发图")) {
-                            val src = p.config.firstOrNull { it.key == "imageUrl" || it.key == "images" }?.value?.trim().orEmpty()
-                            val urls = src.split(Regex("[,\\n\\r]")).map { it.trim() }.filter { it.isNotBlank() }
-                            val url = urls.randomOrNull()
-                            if (url == null) {
-                                Logs.info("[插件] 命中 ${p.name}（发图拉图）但未配置图片直链")
-                                return PluginHit(true, "还没配置图片直链：去「图片引擎」插件的配置里填图片地址（一行一个或用逗号分隔），我就能帮你发图啦。", null)
-                            }
-                            Logs.info("[插件] 命中 ${p.name}（发图拉图）→ ${url.take(60)}（共 ${urls.size} 张，随机取一张）")
-                            return PluginHit(true, null, null, url)
-                        }
-                        // ② 举牌/文字图：本地渲染——取命令后的文字画到底图上
-                        if (cmd in setOf("举牌", "文字图")) {
-                            if (arg.isEmpty()) {
-                                Logs.info("[插件] 命中 ${p.name}（举牌）缺少文字，提示用法")
-                                return PluginHit(true, "请输入要举牌的文字。用法：$noSlash <你的话>", null)
-                            }
-                            Logs.info("[插件] 命中 ${p.name}（举牌）→ ${arg.take(40)}")
-                            val png = renderMeme(p.id, arg)
-                            if (png == null) {
-                                return PluginHit(true, "抱歉，举牌图没生成成功（多半是底图没配置）。可以到「图片引擎」插件的配置里填好底图（template），再发一次试试。", null)
-                            }
-                            return PluginHit(true, null, null, null, png)
-                        }
-                        // ③ 文生图 / 图生图：默认命令（画图/文生图/draw/画一张）
-                        //    本条消息若附带了图片（或引用了图片）→ 走图生图（参照该图风格出图）；否则走文生图
-                        if (arg.isEmpty()) {
-                            Logs.info("[插件] 命中 ${p.name}（出图）缺少描述，提示用法")
-                            return PluginHit(true, "请描述你想画的画面。用法：$noSlash <画面描述>（可附带图片做参照）", null)
-                        }
-                        if (t2iBusy.putIfAbsent(key, true) == true) {
-                            Logs.info("[插件] 命中 ${p.name}（出图）但本会话已有出图在途，忽略并提示")
-                            return PluginHit(true, "正在出图，请稍候，出图完成前这条不再重复触发。", null)
-                        }
+                }
+                // reply 型：固定回复
+                if (c.reply != null) {
+                    Logs.info("[插件] 命中 ${p.name}（固定回复）命令: $m")
+                    return PluginHit(true, c.reply, null)
+                }
+                // image2image 型：图生图（1.7.91 恢复真执行——残留插件重新可用；
+                // 参照来源：本条附图/引用图 → 会话 10 分钟内最近一张图）
+                if (p.type == "image2image") {
+                    val noSlash = if (m.startsWith("/")) m.substring(1) else m
+                    val prompt = when {
+                        text.startsWith(m) -> text.substring(m.length)
+                        text.startsWith(noSlash) -> text.substring(noSlash.length)
+                        else -> ""
+                    }.trim().removePrefix(":").trim()
+                    if (prompt.isEmpty()) {
+                        return PluginHit(true, "请描述要生成的画面。用法：图生图 <描述>（先发图或引用图片消息作参照）", null)
+                    }
+                    val i2iUrl = ev?.imageUrls?.firstOrNull() ?: recentImage(sessionKey)
+                    if (i2iUrl.isNullOrBlank()) {
+                        return PluginHit(true, "没有找到参照图：请先发一张图片（或引用图片消息），再发「图生图 <描述>」。", null)
+                    }
+                    val lockKey = sessionKey ?: "*"
+                    if (t2iBusy.putIfAbsent(lockKey, true) == true) {
+                        return PluginHit(true, "正在出图，请稍候。", null)
+                    }
+                    val r = try {
+                        Logs.info("[插件] 命中 ${p.name}（图生图）→ 参照 ${i2iUrl.take(48)} + 描述 ${prompt.take(40)}")
+                        ImageGenEngine.generateFromImageUrl(i2iUrl, prompt, p.id, ctx)
+                    } finally {
+                        t2iBusy.remove(lockKey)
+                    }
+                    return if (r != null) {
+                        PluginHit(true, null, null, null, null, r.first, r.second)
+                    } else {
+                        PluginHit(true, "图生图没成功：请确认「图片引擎」配置了可用服务（支持 images/generations 带 image 参数、images/edits 或多模态对话任一），或稍后再试。", null)
+                    }
+                }
+                // video 型：AI生视频（异步生成——视频耗时长，不阻塞消息队列；生成完由回调直接发出）
+                if (p.type == "video") {
+                    val noSlash = if (m.startsWith("/")) m.substring(1) else m
+                    val prompt = when {
+                        text.startsWith(m) -> text.substring(m.length)
+                        text.startsWith(noSlash) -> text.substring(noSlash.length)
+                        else -> ""
+                    }.trim().removePrefix(":").trim()
+                    if (prompt.isEmpty()) {
+                        Logs.info("[插件] 命中 ${p.name}（AI生视频）缺少描述，提示用法")
+                        return PluginHit(true, "请描述你想生成的视频画面。用法：$noSlash <画面描述>", null)
+                    }
+                    val key = sessionKey ?: "*"
+                    if (vBusy.putIfAbsent(key, true) == true) {
+                        Logs.info("[插件] 命中 ${p.name}（AI生视频）但本会话已有生成在途，忽略并提示")
+                        return PluginHit(true, "正在生成视频，请稍候，完成前这条不再重复触发。", null)
+                    }
+                    val pid = p.id
+                    val urlMode = videoUrlDeliver != null
+                    Logs.info("[插件] 命中 ${p.name}（AI生视频）→ ${prompt.take(40)}（后台生成，${if (urlMode) "链接模式" else "上传模式"}）")
+                    Thread {
                         try {
-                            // 1.7.91 图生图修复：恢复参照生成——附图/引用图/会话近图（10 分钟内）
-                            // 任一存在即先走图生图三级级联；失败回退纯文生图（不阻断出图）
-                            val i2iUrl = ev?.imageUrls?.firstOrNull() ?: recentImage(key)
-                            if (!i2iUrl.isNullOrBlank()) {
-                                Logs.info("[插件] 命中 ${p.name}（图生图）→ 参照 ${i2iUrl.take(48)} + 描述 ${arg.take(40)}")
-                                val i2i = ImageGenEngine.generateFromImageUrl(i2iUrl, arg, p.id, ctx)
-                                if (i2i != null) {
-                                    return PluginHit(true, null, null, null, null, i2i.first, i2i.second)
+                            if (urlMode) {
+                                val url = VideoGenEngine.generateUrl(prompt, pid)
+                                if (url == null) {
+                                    Logs.warn("[插件] AI生视频链接获取失败（$pid）")
+                                    videoFailNotify?.invoke(key, "AI生视频没成功：请确认已在插件配置里填好视频生成服务地址/密钥/模型，或稍后再试一次。")
+                                } else if (videoUrlDeliver?.invoke(key, url) != true) {
+                                    Logs.warn("[插件] AI生视频链接发送失败")
+                                    videoFailNotify?.invoke(key, "视频生成好了但发送失败，请稍后再试一次。")
+                                } else {
+                                    Logs.info("[插件] AI生视频链接已发送")
                                 }
-                                Logs.warn("[图生图] 参照生成三级均失败，回退纯文生图")
+                            } else {
+                                val bytes = VideoGenEngine.generate(prompt, pid)
+                                if (bytes == null || bytes.isEmpty()) {
+                                    Logs.warn("[插件] AI生视频失败（$pid）")
+                                    videoFailNotify?.invoke(key, "AI生视频没成功：请确认已在插件配置里填好视频生成服务地址/密钥/模型，或稍后再试一次。")
+                                } else if (videoDeliver == null) {
+                                    Logs.warn("[插件] AI生视频完成但投递回调未注入，丢弃结果")
+                                } else {
+                                    Logs.info("[插件] AI生视频完成，开始发送（${bytes.size / 1024}KB）")
+                                    if (videoDeliver?.invoke(key, bytes, "mp4") != true) {
+                                        Logs.warn("[插件] AI生视频发送失败")
+                                        videoFailNotify?.invoke(key, "视频生成好了但发送失败，请稍后再试一次。")
+                                    }
+                                }
                             }
-                            Logs.info("[插件] 命中 ${p.name}（文生图）→ ${arg.take(40)}")
-                            val gen = ImageGenEngine.generate(arg, p.id)
-                            if (gen == null) {
-                                return PluginHit(true, "出图没成功：请确认已在「图片引擎」插件配置里填好服务地址/密钥/模型，或稍后再试一次。", null)
-                            }
-                            return PluginHit(true, null, null, null, null, gen.first, gen.second)
+                        } catch (e: Exception) {
+                            Logs.warn("[插件] AI生视频异常: ${e.message}")
+                            videoFailNotify?.invoke(key, "AI生视频出错了：${e.message}")
                         } finally {
-                            // 出图成功/失败/回退都要释放锁
-                            t2iBusy.remove(key)
+                            vBusy.remove(key)
                         }
+                    }.apply {
+                        isDaemon = true
+                        name = "video-gen"
+                        start()
                     }
-                    // reply 型：固定回复
-                    if (c.reply != null) {
-                        Logs.info("[插件] 命中 ${p.name}（固定回复）命令: $m")
-                        return PluginHit(true, c.reply, null)
-                    }
-                    // image2image 型：图生图（1.7.91 恢复真执行——残留插件重新可用；
-                    // 参照来源：本条附图/引用图 → 会话 10 分钟内最近一张图）
-                    if (p.type == "image2image") {
-                        val noSlash = if (m.startsWith("/")) m.substring(1) else m
-                        val prompt = when {
-                            text.startsWith(m) -> text.substring(m.length)
-                            text.startsWith(noSlash) -> text.substring(noSlash.length)
-                            else -> ""
-                        }.trim().removePrefix(":").trim()
-                        if (prompt.isEmpty()) {
-                            return PluginHit(true, "请描述要生成的画面。用法：图生图 <描述>（先发图或引用图片消息作参照）", null)
+                    return PluginHit(true, if (urlMode) "🎬 收到，正在生成视频，完成后给你发下载链接。" else "🎬 收到，正在生成视频，完成后马上发给你（可能要等一会儿）。", null)
+                }
+                // galgame 型：Galgame 搜索与推荐（一体，数据源：鲲 Galgame 论坛 kungal.com）
+                if (p.type == "galgame") {
+                    val key = sessionKey ?: "default"
+                    val cmd = c.match.trim()
+                    val arg = text.removePrefix(m.trim()).trim().removePrefix(":").trim()
+                    // 待选状态：数字(详情/直链)/取消/刷新 → 交 pending 处理；其余穿透走搜索
+                    val gHit = handleGalPending(key, arg)
+                    if (gHit != null) return gHit
+                    // 「找galgame资源 关键词」：资源全局直搜（备注+作品名模糊），结果直接是可取直链的资源
+                    if (cmd == "找galgame资源") {
+                        if (arg.isBlank()) {
+                            return PluginHit(true, "用法：找galgame资源 关键词 —— 直接搜资源（备注/作品名模糊匹配），如：找galgame资源 汉化包", null)
                         }
-                        val i2iUrl = ev?.imageUrls?.firstOrNull() ?: recentImage(sessionKey)
-                        if (i2iUrl.isNullOrBlank()) {
-                            return PluginHit(true, "没有找到参照图：请先发一张图片（或引用图片消息），再发「图生图 <描述>」。", null)
-                        }
-                        val lockKey = sessionKey ?: "*"
-                        if (t2iBusy.putIfAbsent(lockKey, true) == true) {
-                            return PluginHit(true, "正在出图，请稍候。", null)
-                        }
-                        val r = try {
-                            Logs.info("[插件] 命中 ${p.name}（图生图）→ 参照 ${i2iUrl.take(48)} + 描述 ${prompt.take(40)}")
-                            ImageGenEngine.generateFromImageUrl(i2iUrl, prompt, p.id, ctx)
-                        } finally {
-                            t2iBusy.remove(lockKey)
-                        }
-                        return if (r != null) {
-                            PluginHit(true, null, null, null, null, r.first, r.second)
-                        } else {
-                            PluginHit(true, "图生图没成功：请确认「图片引擎」配置了可用服务（支持 images/generations 带 image 参数、images/edits 或多模态对话任一），或稍后再试。", null)
-                        }
-                    }
-                    // video 型：AI生视频（异步生成——视频耗时长，不阻塞消息队列；生成完由回调直接发出）
-                    if (p.type == "video") {
-                        val noSlash = if (m.startsWith("/")) m.substring(1) else m
-                        val prompt = when {
-                            text.startsWith(m) -> text.substring(m.length)
-                            text.startsWith(noSlash) -> text.substring(noSlash.length)
-                            else -> ""
-                        }.trim().removePrefix(":").trim()
-                        if (prompt.isEmpty()) {
-                            Logs.info("[插件] 命中 ${p.name}（AI生视频）缺少描述，提示用法")
-                            return PluginHit(true, "请描述你想生成的视频画面。用法：$noSlash <画面描述>", null)
-                        }
-                        val key = sessionKey ?: "*"
-                        if (vBusy.putIfAbsent(key, true) == true) {
-                            Logs.info("[插件] 命中 ${p.name}（AI生视频）但本会话已有生成在途，忽略并提示")
-                            return PluginHit(true, "正在生成视频，请稍候，完成前这条不再重复触发。", null)
-                        }
-                        val pid = p.id
-                        val urlMode = videoUrlDeliver != null
-                        Logs.info("[插件] 命中 ${p.name}（AI生视频）→ ${prompt.take(40)}（后台生成，${if (urlMode) "链接模式" else "上传模式"}）")
+                        val prevRes = pendingGal[key]
+                        val rPage = if (prevRes != null && prevRes.stage == "reslist" && prevRes.keyword == arg) prevRes.page + 1 else 1
                         Thread {
                             try {
-                                if (urlMode) {
-                                    val url = VideoGenEngine.generateUrl(prompt, pid)
-                                    if (url == null) {
-                                        Logs.warn("[插件] AI生视频链接获取失败（$pid）")
-                                        videoFailNotify?.invoke(key, "AI生视频没成功：请确认已在插件配置里填好视频生成服务地址/密钥/模型，或稍后再试一次。")
-                                    } else if (videoUrlDeliver?.invoke(key, url) != true) {
-                                        Logs.warn("[插件] AI生视频链接发送失败")
-                                        videoFailNotify?.invoke(key, "视频生成好了但发送失败，请稍后再试一次。")
-                                    } else {
-                                        Logs.info("[插件] AI生视频链接已发送")
-                                    }
+                                val pg = GalEngine.searchResources(arg, rPage)
+                                if (pg == null) {
+                                    videoFailNotify?.invoke(key, "❌ 资源搜索失败（网络或站点异常），稍后再试")
+                                } else if (pg.items.isEmpty()) {
+                                    videoFailNotify?.invoke(
+                                        key,
+                                        if (rPage > 1) {
+                                            "📄 「$arg」没有更多结果了"
+                                        } else {
+                                            "🔍 没有找到与「$arg」相关的资源，换个关键词试试"
+                                        },
+                                    )
                                 } else {
-                                    val bytes = VideoGenEngine.generate(prompt, pid)
-                                    if (bytes == null || bytes.isEmpty()) {
-                                        Logs.warn("[插件] AI生视频失败（$pid）")
-                                        videoFailNotify?.invoke(key, "AI生视频没成功：请确认已在插件配置里填好视频生成服务地址/密钥/模型，或稍后再试一次。")
-                                    } else if (videoDeliver == null) {
-                                        Logs.warn("[插件] AI生视频完成但投递回调未注入，丢弃结果")
-                                    } else {
-                                        Logs.info("[插件] AI生视频完成，开始发送（${bytes.size / 1024}KB）")
-                                        if (videoDeliver?.invoke(key, bytes, "mp4") != true) {
-                                            Logs.warn("[插件] AI生视频发送失败")
-                                            videoFailNotify?.invoke(key, "视频生成好了但发送失败，请稍后再试一次。")
-                                        }
-                                    }
+                                    pendingGal[key] = GalSession(
+                                        keyword = arg,
+                                        page = rPage,
+                                        total = pg.total,
+                                        gte = pg.gte,
+                                        stage = "reslist",
+                                        resources = pg.items,
+                                    )
+                                    videoFailNotify?.invoke(key, galResSearchReply(arg, rPage, pg.total, pg.gte, pg.items))
                                 }
                             } catch (e: Exception) {
-                                Logs.warn("[插件] AI生视频异常: ${e.message}")
-                                videoFailNotify?.invoke(key, "AI生视频出错了：${e.message}")
-                            } finally {
-                                vBusy.remove(key)
+                                Logs.err("[Gal] 资源搜索异常: ${e.message}")
+                                videoFailNotify?.invoke(key, "❌ 资源搜索出错：${e.message}")
                             }
                         }.apply {
                             isDaemon = true
-                            name = "video-gen"
+                            name = "gal-res-search"
                             start()
                         }
-                        return PluginHit(true, if (urlMode) "🎬 收到，正在生成视频，完成后给你发下载链接。" else "🎬 收到，正在生成视频，完成后马上发给你（可能要等一会儿）。", null)
+                        return PluginHit(true, "🔍 资源搜索「$arg」中...", null)
                     }
-                    // galgame 型：Galgame 搜索与推荐（一体，数据源：鲲 Galgame 论坛 kungal.com）
-                    if (p.type == "galgame") {
-                        val key = sessionKey ?: "default"
-                        val cmd = c.match.trim()
-                        val arg = text.removePrefix(m.trim()).trim().removePrefix(":").trim()
-                        // 待选状态：数字(详情/直链)/取消/刷新 → 交 pending 处理；其余穿透走搜索
-                        val gHit = handleGalPending(key, arg)
-                        if (gHit != null) return gHit
-                        // 「找galgame资源 关键词」：资源全局直搜（备注+作品名模糊），结果直接是可取直链的资源
-                        if (cmd == "找galgame资源") {
-                            if (arg.isBlank()) {
-                                return PluginHit(true, "用法：找galgame资源 关键词 —— 直接搜资源（备注/作品名模糊匹配），如：找galgame资源 汉化包", null)
-                            }
-                            val prevRes = pendingGal[key]
-                            val rPage = if (prevRes != null && prevRes.stage == "reslist" && prevRes.keyword == arg) prevRes.page + 1 else 1
-                            Thread {
-                                try {
-                                    val pg = GalEngine.searchResources(arg, rPage)
-                                    if (pg == null) {
-                                        videoFailNotify?.invoke(key, "❌ 资源搜索失败（网络或站点异常），稍后再试")
-                                    } else if (pg.items.isEmpty()) {
-                                        videoFailNotify?.invoke(
-                                            key,
-                                            if (rPage > 1) "📄 「$arg」没有更多结果了"
-                                            else "🔍 没有找到与「$arg」相关的资源，换个关键词试试"
-                                        )
-                                    } else {
-                                        pendingGal[key] = GalSession(
-                                            keyword = arg, page = rPage, total = pg.total, gte = pg.gte,
-                                            stage = "reslist", resources = pg.items
-                                        )
-                                        videoFailNotify?.invoke(key, galResSearchReply(arg, rPage, pg.total, pg.gte, pg.items))
-                                    }
-                                } catch (e: Exception) {
-                                    Logs.err("[Gal] 资源搜索异常: ${e.message}")
-                                    videoFailNotify?.invoke(key, "❌ 资源搜索出错：${e.message}")
-                                }
-                            }.apply { isDaemon = true; name = "gal-res-search"; start() }
-                            return PluginHit(true, "🔍 资源搜索「$arg」中...", null)
-                        }
-                        // 合并（1.7.54）：推荐只走 gal推荐（gal 推荐/评分/热门等旧写法兼容）；裸 gal 不再出榜，给用法
-                        val isRec = cmd == "gal推荐" || arg in setOf("推荐", "评分", "排行榜", "排行")
-                        if (!isRec && arg.isBlank()) {
-                            return PluginHit(
-                                true,
-                                "用法：gal 关键词 搜索作品 · gal推荐 看评分榜 · 找galgame资源 关键词 搜资源",
-                                null
-                            )
-                        }
-                        Thread {
-                            try {
-                                if (isRec) {
-                                    val items = GalEngine.ranking("rating_desc", 10)
-                                    if (items.isNullOrEmpty()) {
-                                        videoFailNotify?.invoke(key, "❌ 推荐榜获取失败（站点繁忙或网络异常），稍后再试")
-                                    } else {
-                                        pendingGal[key] = GalSession(stage = "list", items = items)
-                                        val reply = buildString {
-                                            append("🏆 Galgame 评分推荐榜 Top${items.size}（鲲 Galgame 社区加权评分）\n\n")
-                                            items.forEach { append(GalEngine.lineOf(0, it, true)).append("\n") }
-                                            append("\n回复编号查看详情，或「取消」。")
-                                        }
-                                        videoFailNotify?.invoke(key, reply)
-                                    }
+                    // 合并（1.7.54）：推荐只走 gal推荐（gal 推荐/评分/热门等旧写法兼容）；裸 gal 不再出榜，给用法
+                    val isRec = cmd == "gal推荐" || arg in setOf("推荐", "评分", "排行榜", "排行")
+                    if (!isRec && arg.isBlank()) {
+                        return PluginHit(
+                            true,
+                            "用法：gal 关键词 搜索作品 · gal推荐 看评分榜 · 找galgame资源 关键词 搜资源",
+                            null,
+                        )
+                    }
+                    Thread {
+                        try {
+                            if (isRec) {
+                                val items = GalEngine.ranking("rating_desc", 10)
+                                if (items.isNullOrEmpty()) {
+                                    videoFailNotify?.invoke(key, "❌ 推荐榜获取失败（站点繁忙或网络异常），稍后再试")
                                 } else {
-                                    // 同关键词再发一次 = 翻下一页
-                                    val prev = pendingGal[key]
-                                    val page = if (prev != null && prev.keyword == arg && prev.stage == "list") prev.page + 1 else 1
-                                    val pg = GalEngine.search(arg, page)
-                                    if (pg == null) {
-                                        videoFailNotify?.invoke(key, "❌ 搜索失败（网络或站点异常），稍后再试")
-                                    } else if (pg.items.isEmpty()) {
-                                        val pages = (pg.total + GalEngine.pageSize - 1) / GalEngine.pageSize
-                                        videoFailNotify?.invoke(
-                                            key,
-                                            if (page > 1) "📄 「$arg」没有更多页了（共 $pages 页）"
-                                            else "🔍 没有找到「$arg」相关作品，换个关键词试试"
-                                        )
-                                    } else {
-                                        pendingGal[key] = GalSession(
-                                            keyword = arg, page = page, total = pg.total, gte = pg.gte,
-                                            stage = "list", items = pg.items
-                                        )
-                                        val pages = (pg.total + GalEngine.pageSize - 1) / GalEngine.pageSize
-                                        val reply = buildString {
-                                            append("🔍 「$arg」共 ${pg.total}${if (pg.gte) "+" else ""} 个作品 · 第 ${page}/${pages} 页\n\n")
-                                            pg.items.forEachIndexed { i, it ->
-                                                append(GalEngine.lineOf(i + 1, it, false)).append("\n")
-                                            }
-                                            append("\n回复编号查看详情；同关键词再发「gal $arg」翻下一页；「取消」退出")
-                                        }
-                                        videoFailNotify?.invoke(key, reply)
+                                    pendingGal[key] = GalSession(stage = "list", items = items)
+                                    val reply = buildString {
+                                        append("🏆 Galgame 评分推荐榜 Top${items.size}（鲲 Galgame 社区加权评分）\n\n")
+                                        items.forEach { append(GalEngine.lineOf(0, it, true)).append("\n") }
+                                        append("\n回复编号查看详情，或「取消」。")
                                     }
+                                    videoFailNotify?.invoke(key, reply)
                                 }
-                            } catch (e: Exception) {
-                                Logs.err("[Gal] 查询异常: ${e.message}")
-                                videoFailNotify?.invoke(key, "❌ Galgame 查询出错：${e.message}")
-                            }
-                        }.apply { isDaemon = true; name = "gal-query"; start() }
-                        return PluginHit(true, if (isRec) "🎲 评分推荐榜加载中..." else "🔍 搜索「$arg」中...", null)
-                    }
-                    // game 型：游戏资源搜索（数据源：123资源库 www.123zyk.com）
-                    if (p.type == "game") {
-                        val key = sessionKey ?: "default"
-                        val cmd = c.match.trim()
-                        val arg = text.removePrefix(m.trim()).trim().removePrefix(":").trim()
-                        // 待选状态：数字(详情/直链)/取消/刷新 → 交 pending 处理；其余穿透走搜索
-                        val gHit = handleGamePending(key, arg)
-                        if (gHit != null) return gHit
-                        val isRec = cmd == "游戏推荐" || arg in setOf("推荐", "热门", "最新")
-                        if (!isRec && arg.isBlank()) {
-                            return PluginHit(
-                                true,
-                                "用法：游戏 关键词 搜索游戏 · 游戏推荐 看最新热门 · 回复编号取网盘直链",
-                                null
-                            )
-                        }
-                        Thread {
-                            try {
-                                if (isRec) {
-                                    val items = GameEngine.ranking(10)
-                                    if (items.isEmpty()) {
-                                        videoFailNotify?.invoke(key, "❌ 游戏列表获取失败（站点繁忙或网络异常），稍后再试")
-                                    } else {
-                                        pendingGame[key] = GameSession(stage = "list", items = items)
-                                        val reply = buildString {
-                                            append("🎮 123资源库 最新/热门游戏（Top ${items.size}）\n\n")
-                                            items.forEachIndexed { i, it ->
-                                                append(GameEngine.lineOf(i + 1, it)).append("\n")
-                                            }
-                                            append("\n回复编号看详情与下载链接；「取消」退出")
-                                        }
-                                        videoFailNotify?.invoke(key, reply)
-                                    }
+                            } else {
+                                // 同关键词再发一次 = 翻下一页
+                                val prev = pendingGal[key]
+                                val page = if (prev != null && prev.keyword == arg && prev.stage == "list") prev.page + 1 else 1
+                                val pg = GalEngine.search(arg, page)
+                                if (pg == null) {
+                                    videoFailNotify?.invoke(key, "❌ 搜索失败（网络或站点异常），稍后再试")
+                                } else if (pg.items.isEmpty()) {
+                                    val pages = (pg.total + GalEngine.pageSize - 1) / GalEngine.pageSize
+                                    videoFailNotify?.invoke(
+                                        key,
+                                        if (page > 1) {
+                                            "📄 「$arg」没有更多页了（共 $pages 页）"
+                                        } else {
+                                            "🔍 没有找到「$arg」相关作品，换个关键词试试"
+                                        },
+                                    )
                                 } else {
-                                    // 同关键词再发一次 = 翻下一页
-                                    val prev = pendingGame[key]
-                                    val page = if (prev != null && prev.keyword == arg && prev.stage == "list") prev.page + 1 else 1
-                                    val pg = GameEngine.search(arg, page)
-                                    if (pg == null) {
-                                        videoFailNotify?.invoke(key, "❌ 搜索失败（网络或站点异常），稍后再试")
-                                    } else if (pg.items.isEmpty()) {
-                                        val pages = if (pg.total > 0) (pg.total + 7) / 8 else 0
-                                        videoFailNotify?.invoke(
-                                            key,
-                                            if (page > 1) "📄 「$arg」没有更多页了（共 $pages 页）"
-                                            else "🔍 没有找到「$arg」相关游戏，换个关键词试试"
-                                        )
-                                    } else {
-                                        pendingGame[key] = GameSession(
-                                            keyword = arg, page = page, total = pg.total,
-                                            stage = "list", items = pg.items
-                                        )
-                                        val pages = (pg.total + 7) / 8
-                                        val reply = buildString {
-                                            append("🔍 「$arg」共 ${pg.total}${if (pg.gte) "+" else ""} 个游戏 · 第 ${page}/${if (pages < 1) 1 else pages} 页\n\n")
-                                            pg.items.forEachIndexed { i, it ->
-                                                append(GameEngine.lineOf(i + 1, it)).append("\n")
-                                            }
-                                            append("\n回复编号看详情与下载链接；同关键词再发一次翻下一页；「取消」退出")
+                                    pendingGal[key] = GalSession(
+                                        keyword = arg,
+                                        page = page,
+                                        total = pg.total,
+                                        gte = pg.gte,
+                                        stage = "list",
+                                        items = pg.items,
+                                    )
+                                    val pages = (pg.total + GalEngine.pageSize - 1) / GalEngine.pageSize
+                                    val reply = buildString {
+                                        append("🔍 「$arg」共 ${pg.total}${if (pg.gte) "+" else ""} 个作品 · 第 $page/$pages 页\n\n")
+                                        pg.items.forEachIndexed { i, it ->
+                                            append(GalEngine.lineOf(i + 1, it, false)).append("\n")
                                         }
-                                        videoFailNotify?.invoke(key, reply)
+                                        append("\n回复编号查看详情；同关键词再发「gal $arg」翻下一页；「取消」退出")
                                     }
+                                    videoFailNotify?.invoke(key, reply)
                                 }
-                            } catch (e: Exception) {
-                                Logs.err("[游戏] 查询异常: ${e.message}")
-                                videoFailNotify?.invoke(key, "❌ 游戏搜索出错：${e.message}")
                             }
-                        }.apply { isDaemon = true; name = "game-query"; start() }
-                        return PluginHit(true, if (isRec) "🎮 游戏列表加载中..." else "🔍 搜索「$arg」中...", null)
+                        } catch (e: Exception) {
+                            Logs.err("[Gal] 查询异常: ${e.message}")
+                            videoFailNotify?.invoke(key, "❌ Galgame 查询出错：${e.message}")
+                        }
+                    }.apply {
+                        isDaemon = true
+                        name = "gal-query"
+                        start()
                     }
-                    // prompt 型：把命令后面的话 + 插件指令交给 AI
-                    Logs.info("[插件] 命中 ${p.name}（prompt型/AI）命令: $m，参数: ${text.removePrefix(m).trim().take(30)}")
-                    val rest = text.removePrefix(m).trim()
-                    val prompt = c.prompt
-                    return PluginHit(true, null, prompt)
+                    return PluginHit(true, if (isRec) "🎲 评分推荐榜加载中..." else "🔍 搜索「$arg」中...", null)
+                }
+                // game 型：游戏资源搜索（数据源：123资源库 www.123zyk.com）
+                if (p.type == "game") {
+                    val key = sessionKey ?: "default"
+                    val cmd = c.match.trim()
+                    val arg = text.removePrefix(m.trim()).trim().removePrefix(":").trim()
+                    // 待选状态：数字(详情/直链)/取消/刷新 → 交 pending 处理；其余穿透走搜索
+                    val gHit = handleGamePending(key, arg)
+                    if (gHit != null) return gHit
+                    val isRec = cmd == "游戏推荐" || arg in setOf("推荐", "热门", "最新")
+                    if (!isRec && arg.isBlank()) {
+                        return PluginHit(
+                            true,
+                            "用法：游戏 关键词 搜索游戏 · 游戏推荐 看最新热门 · 回复编号取网盘直链",
+                            null,
+                        )
+                    }
+                    Thread {
+                        try {
+                            if (isRec) {
+                                val items = GameEngine.ranking(10)
+                                if (items.isEmpty()) {
+                                    videoFailNotify?.invoke(key, "❌ 游戏列表获取失败（站点繁忙或网络异常），稍后再试")
+                                } else {
+                                    pendingGame[key] = GameSession(stage = "list", items = items)
+                                    val reply = buildString {
+                                        append("🎮 123资源库 最新/热门游戏（Top ${items.size}）\n\n")
+                                        items.forEachIndexed { i, it ->
+                                            append(GameEngine.lineOf(i + 1, it)).append("\n")
+                                        }
+                                        append("\n回复编号看详情与下载链接；「取消」退出")
+                                    }
+                                    videoFailNotify?.invoke(key, reply)
+                                }
+                            } else {
+                                // 同关键词再发一次 = 翻下一页
+                                val prev = pendingGame[key]
+                                val page = if (prev != null && prev.keyword == arg && prev.stage == "list") prev.page + 1 else 1
+                                val pg = GameEngine.search(arg, page)
+                                if (pg == null) {
+                                    videoFailNotify?.invoke(key, "❌ 搜索失败（网络或站点异常），稍后再试")
+                                } else if (pg.items.isEmpty()) {
+                                    val pages = if (pg.total > 0) (pg.total + 7) / 8 else 0
+                                    videoFailNotify?.invoke(
+                                        key,
+                                        if (page > 1) {
+                                            "📄 「$arg」没有更多页了（共 $pages 页）"
+                                        } else {
+                                            "🔍 没有找到「$arg」相关游戏，换个关键词试试"
+                                        },
+                                    )
+                                } else {
+                                    pendingGame[key] = GameSession(
+                                        keyword = arg,
+                                        page = page,
+                                        total = pg.total,
+                                        stage = "list",
+                                        items = pg.items,
+                                    )
+                                    val pages = (pg.total + 7) / 8
+                                    val reply = buildString {
+                                        append("🔍 「$arg」共 ${pg.total}${if (pg.gte) "+" else ""} 个游戏 · 第 $page/${if (pages < 1) 1 else pages} 页\n\n")
+                                        pg.items.forEachIndexed { i, it ->
+                                            append(GameEngine.lineOf(i + 1, it)).append("\n")
+                                        }
+                                        append("\n回复编号看详情与下载链接；同关键词再发一次翻下一页；「取消」退出")
+                                    }
+                                    videoFailNotify?.invoke(key, reply)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Logs.err("[游戏] 查询异常: ${e.message}")
+                            videoFailNotify?.invoke(key, "❌ 游戏搜索出错：${e.message}")
+                        }
+                    }.apply {
+                        isDaemon = true
+                        name = "game-query"
+                        start()
+                    }
+                    return PluginHit(true, if (isRec) "🎮 游戏列表加载中..." else "🔍 搜索「$arg」中...", null)
+                }
+                // prompt 型：把命令后面的话 + 插件指令交给 AI
+                Logs.info("[插件] 命中 ${p.name}（prompt型/AI）命令: $m，参数: ${text.removePrefix(m).trim().take(30)}")
+                val rest = text.removePrefix(m).trim()
+                val prompt = c.prompt
+                return PluginHit(true, null, prompt)
             }
         }
         // 兜底（正常不可达：run 内每个分支都 return）——仅为满足非空返回
@@ -1979,7 +2066,7 @@ object PluginManager {
                 regionY2 = regionArr[3],
                 textColor = ImageRender.parseColor(cfg["textColor"], "45,38,35,255"),
                 bracketColor = ImageRender.parseColor(cfg["bracketColor"], "156,88,207,255"),
-                maxFontHeight = cfg["maxFontHeight"]?.trim()?.toIntOrNull() ?: 200
+                maxFontHeight = cfg["maxFontHeight"]?.trim()?.toIntOrNull() ?: 200,
             )
             val templateBytes = loadTemplate(pluginId, templateRef)
                 ?: return null.also { Logs.err("[渲染] 底图不可用：$templateRef") }
@@ -2018,8 +2105,7 @@ object PluginManager {
     }
 
     /** 把配置里相对路径的资产解析为插件目录下的绝对文件 */
-    private fun resolveTemplateFile(pluginId: String, ref: String): File =
-        File(pluginDir(pluginId), ref.trim())
+    private fun resolveTemplateFile(pluginId: String, ref: String): File = File(pluginDir(pluginId), ref.trim())
 
     // ---------------- 自带图片（localimage 型插件） ----------------
     /**
@@ -2072,8 +2158,9 @@ object PluginManager {
             }
             forward != null && forward > 0 && helpPages.containsKey(sessionKey) -> {
                 val cur = helpPages[sessionKey] ?: 1
-                if (cur >= pages) PluginHit(true, renderHelp(cur) + "\n（已是最后一页）", null)
-                else {
+                if (cur >= pages) {
+                    PluginHit(true, renderHelp(cur) + "\n（已是最后一页）", null)
+                } else {
                     val target = (cur + forward).coerceAtMost(pages)
                     helpPages[sessionKey] = target
                     PluginHit(true, renderHelp(target), null)
@@ -2081,8 +2168,9 @@ object PluginManager {
             }
             backward != null && backward > 0 && helpPages.containsKey(sessionKey) -> {
                 val cur = helpPages[sessionKey] ?: 1
-                if (cur <= 1) PluginHit(true, renderHelp(cur) + "\n（已是第一页）", null)
-                else {
+                if (cur <= 1) {
+                    PluginHit(true, renderHelp(cur) + "\n（已是第一页）", null)
+                } else {
                     val target = (cur - backward).coerceAtLeast(1)
                     helpPages[sessionKey] = target
                     PluginHit(true, renderHelp(target), null)
@@ -2095,12 +2183,11 @@ object PluginManager {
         }
     }
 
-    private fun helpPlugins(): List<PluginInfo> =
-        installed().filter { it.id != "help" }.sortedBy { it.name }  // 帮助菜单自身不计入列表
+    private fun helpPlugins(): List<PluginInfo> = installed().filter { it.id != "help" }.sortedBy { it.name } // 帮助菜单自身不计入列表
 
     private fun totalHelpPages(): Int {
         val n = helpPlugins().size
-        return n.coerceAtLeast(1)  // 每页展示一个插件的文档介绍
+        return n.coerceAtLeast(1) // 每页展示一个插件的文档介绍
     }
 
     private fun renderHelp(idx: Int): String {
@@ -2110,7 +2197,7 @@ object PluginManager {
         val i = idx.coerceIn(1, n)
         val p = list[i - 1]
         val sb = StringBuilder()
-        sb.append("📋 插件帮助（第${i}/${n}个 · 共${n}个插件）\n")
+        sb.append("📋 插件帮助（第$i/${n}个 · 共${n}个插件）\n")
         sb.append("🔸 被动触发方式：直接输入插件的指令或关键词即可触发，无需任何前缀；\n   输入与插件无关的内容时正常聊天，不会误触发。\n")
         sb.append("📌 插件列表（发序号直达，如「3」看第 3 个；或用 +N / -N 翻页）：\n")
         list.forEachIndexed { k, pl -> sb.append("${k + 1}. ${pl.name}\n") }
@@ -2161,7 +2248,11 @@ object PluginManager {
 
     /** 解析 SKILL.md：--- 之间的 name/description + 正文作为执行说明（对齐 AstrBot 4.13+ Agent Skills） */
     private fun parseSkillFile(f: File, fallbackName: String): LlmSkill? {
-        val text = try { f.readText() } catch (_: Exception) { return null }
+        val text = try {
+            f.readText()
+        } catch (_: Exception) {
+            return null
+        }
         var name = fallbackName
         var desc = ""
         val fm = Regex("""^---\s*\r?\n([\s\S]*?)\r?\n---""").find(text)
@@ -2188,7 +2279,11 @@ object PluginManager {
 
     /** 插件自带 skills/ 下的全部技能（按目录 mtime 缓存，避免每条消息重复读盘） */
     private fun pluginSkillsOf(p: PluginInfo): List<LlmSkill> {
-        val root = try { PythonRuntime.pluginDir(p.id) } catch (_: Exception) { null } ?: return emptyList()
+        val root = try {
+            PythonRuntime.pluginDir(p.id)
+        } catch (_: Exception) {
+            null
+        } ?: return emptyList()
         val skillsDir = locateSkillsDir(root) ?: return emptyList()
         val stamp = skillsDir.lastModified()
         val cached = pluginSkillCache[p.id]
@@ -2220,11 +2315,13 @@ object PluginManager {
             if (p.trigger != "llm") continue
             for (c in p.commands) {
                 val name = c.match.trim().ifBlank { "/" + p.name }
-                out.add(LlmSkill(
-                    name = name,
-                    desc = p.description.ifBlank { c.prompt.take(80) }.ifBlank { name },
-                    prompt = c.prompt.ifBlank { c.reply ?: "" }
-                ))
+                out.add(
+                    LlmSkill(
+                        name = name,
+                        desc = p.description.ifBlank { c.prompt.take(80) }.ifBlank { name },
+                        prompt = c.prompt.ifBlank { c.reply ?: "" },
+                    ),
+                )
             }
         }
         return out
@@ -2252,7 +2349,7 @@ object PluginManager {
                 out.addAll(wordReplaceRules(p.id))
                 continue
             }
-            if (skipHook) continue  // 跳过 hook 插件（filter_blankline / 命令正则），保留原始格式
+            if (skipHook) continue // 跳过 hook 插件（filter_blankline / 命令正则），保留原始格式
             // 空行插件按配置选模式：0=压缩多余空行，1=完全去空行（不留换行/不回车）
             if (p.id == "filter_blankline") {
                 val mode = configMap("filter_blankline")["mode"]?.trim() ?: "0"
@@ -2318,21 +2415,18 @@ object PluginManager {
         return t
     }
 
-    private fun callWebhook(url: String, message: String): String {
-        return try {
-            val body = org.json.JSONObject()
-                .put("message", message)
-                .put("time", System.currentTimeMillis())
-                .toString()
-            val req = Request.Builder()
-                .url(url)
-                .post(okhttp3.RequestBody.create("application/json; charset=utf-8".toMediaType(), body))
-                .build()
-            val resp = http.newCall(req).execute()
-            if (resp.isSuccessful) resp.body?.string()?.trim().orEmpty() else "webhook 返回 HTTP ${resp.code}"
-        } catch (e: Exception) {
-            "webhook 调用失败: ${e.message}"
-        }
+    private fun callWebhook(url: String, message: String): String = try {
+        val body = org.json.JSONObject()
+            .put("message", message)
+            .put("time", System.currentTimeMillis())
+            .toString()
+        val req = Request.Builder()
+            .url(url)
+            .post(okhttp3.RequestBody.create("application/json; charset=utf-8".toMediaType(), body))
+            .build()
+        val resp = http.newCall(req).execute()
+        if (resp.isSuccessful) resp.body?.string()?.trim().orEmpty() else "webhook 返回 HTTP ${resp.code}"
+    } catch (e: Exception) {
+        "webhook 调用失败: ${e.message}"
     }
-
 }

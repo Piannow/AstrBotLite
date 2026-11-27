@@ -3,7 +3,6 @@ package com.astrbot.lite.core
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
@@ -28,11 +27,12 @@ class QqBotClient(
     private val apiBase: String,
     /** 环境标识（prod / sandbox）：仅用于区分同一 AppID 的不同接入环境 */
     private val env: String = "prod",
-    private val listener: Listener
+    private val listener: Listener,
 ) {
     interface Listener {
         fun onStatus(text: String)
         fun onMessage(ev: QqMessageEvent)
+
         /** 按钮点击（INTERACTION_CREATE type=11）；默认忽略，BotEngine 可覆写 */
         fun onInteraction(ev: QqInteraction) {}
     }
@@ -49,7 +49,7 @@ class QqBotClient(
             val body = JSONObject().put("appId", appId).put("clientSecret", secret).toString()
             val urls = arrayOf(
                 "https://bots.qq.com/app/getAppAccessToken",
-                "$apiBase/app/getAppAccessToken"
+                "$apiBase/app/getAppAccessToken",
             )
             var lastErr: Exception? = null
             for (u in urls) {
@@ -84,7 +84,7 @@ class QqBotClient(
         const val OP_HEARTBEAT_ACK = 11
 
         // 群聊@ + 单聊（GROUP_AND_C2C_EVENT）。仅订阅需要的权限，避免“intent 无权限”被拒
-        const val INTENTS = (1 shl 25) or (1 shl 26)   // 群/单聊消息 + 互动事件（按钮回调）
+        const val INTENTS = (1 shl 25) or (1 shl 26) // 群/单聊消息 + 互动事件（按钮回调）
     }
 
     private val json = "application/json; charset=utf-8".toMediaType()
@@ -97,29 +97,40 @@ class QqBotClient(
 
     @Volatile private var running = false
     private var ws: WebSocket? = null
+
     @Volatile private var accessToken: String? = null
     private var tokenExpireAt = 0L
     private var sessionId: String? = null
     private var seq = 0L
     private var heartbeatMs = 45000L
     private var heartbeatThread: Thread? = null
+
     /** 当前机器人自己的 openid（READY 的 d.user.id）：用于识别群消息里@的是不是自己 */
     @Volatile private var botOpenid = ""
+
     /** 机器人自己的昵称（READY 的 d.user.username）：全量消息模式下 content 里 @ 标记是昵称形态，用昵称兜底判 atMe */
     @Volatile private var botNameCache = ""
+
     /** 最近一次收到心跳 ACK 的时间：用于检测网关“假死”（TCP 未断但不回 ACK） */
     @Volatile private var lastAckAt = 0L
+
     /** 鉴权成功(READY)时间 / 最近一次收到任何事件的时间：用于“已连接但收不到事件”的诊断 */
     @Volatile private var readyAt = 0L
+
     @Volatile private var lastEventAt = 0L
+
     // 鉴权令牌格式：v2 用 "QQBot {access_token}"；若不支持自动切换为 "Bot {appid}.{secret}"
     @Volatile private var useAccessTokenIdentify = true
+
     // 鉴权连续失败计数（用于切换鉴权格式）
     @Volatile private var invalidCount = 0
+
     // 当前生效的 REST 地址（与所选环境保持一致）
     @Volatile private var restBase = apiBase
+
     /** 同一 msg_id 的回复次数（平台要求 msg_id+msg_seq 唯一；不填默认 1，重复回复同一消息会被判重拒绝） */
     private val replySeq = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
     /** 每个会话最近一条机器人消息：会话键 → (message_id, 发送时间)。用于「/撤回」 */
     private val lastSent = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long>>()
 
@@ -182,31 +193,34 @@ class QqBotClient(
     private fun connectOnce(url: String, token: String) {
         val latch = CountDownLatch(1)
         val req = Request.Builder().url(url).build()
-        val socket = http.newWebSocket(req, object : WebSocketListener() {
-            override fun onOpen(webSocket: WebSocket, response: Response) {
-                listener.onStatus("WebSocket 已建立")
-            }
+        val socket = http.newWebSocket(
+            req,
+            object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    listener.onStatus("WebSocket 已建立")
+                }
 
-            override fun onMessage(webSocket: WebSocket, text: String) {
-                handleFrame(text)
-            }
+                override fun onMessage(webSocket: WebSocket, text: String) {
+                    handleFrame(text)
+                }
 
-            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                if (ws === webSocket) webSocket.close(code, reason)
-            }
+                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    if (ws === webSocket) webSocket.close(code, reason)
+                }
 
-            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                if (ws === webSocket) ws = null
-                listener.onStatus("连接已关闭（$code $reason）")
-                latch.countDown()
-            }
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    if (ws === webSocket) ws = null
+                    listener.onStatus("连接已关闭（$code $reason）")
+                    latch.countDown()
+                }
 
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                if (ws === webSocket) ws = null
-                listener.onStatus("连接断开: ${t.message}")
-                latch.countDown()
-            }
-        })
+                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    if (ws === webSocket) ws = null
+                    listener.onStatus("连接断开: ${t.message}")
+                    latch.countDown()
+                }
+            },
+        )
         ws = socket
         try {
             latch.await()
@@ -221,7 +235,7 @@ class QqBotClient(
         val body = JSONObject().put("appId", appId).put("clientSecret", secret).toString()
         val urls = arrayOf(
             "https://bots.qq.com/app/getAppAccessToken",
-            "$apiBase/app/getAppAccessToken"
+            "$apiBase/app/getAppAccessToken",
         )
         var lastErr: Exception? = null
         for (u in urls) {
@@ -257,12 +271,10 @@ class QqBotClient(
     }
 
     /** REST 地址：与所选环境保持一致（正式用 v2 官方域名 api.sgroup.qq.com） */
-    private fun restBaseFor(): String {
-        return if (Config.qqEnv == "sandbox") {
-            "https://sandbox.api.sgroup.qq.com"
-        } else {
-            "https://api.sgroup.qq.com"
-        }
+    private fun restBaseFor(): String = if (Config.qqEnv == "sandbox") {
+        "https://sandbox.api.sgroup.qq.com"
+    } else {
+        "https://api.sgroup.qq.com"
     }
 
     /**
@@ -295,12 +307,10 @@ class QqBotClient(
     }
 
     /** 兜底网关地址（发现接口失败时使用） */
-    private fun fallbackWsUrl(): String {
-        return if (Config.qqEnv == "sandbox") {
-            "wss://sandbox.api.sgroup.qq.com/websocket/"
-        } else {
-            "wss://api.sgroup.qq.com/websocket/"
-        }
+    private fun fallbackWsUrl(): String = if (Config.qqEnv == "sandbox") {
+        "wss://sandbox.api.sgroup.qq.com/websocket/"
+    } else {
+        "wss://api.sgroup.qq.com/websocket/"
     }
 
     // ---------------- 收发 ----------------
@@ -356,8 +366,14 @@ class QqBotClient(
                 .put(RequestBody.create(json, JSONObject().put("code", code).toString()))
                 .build()
             val resp = http.newCall(req).execute()
-            if (resp.isSuccessful) true else {
-                val t = try { resp.body?.string().orEmpty() } catch (_: Exception) { "" }
+            if (resp.isSuccessful) {
+                true
+            } else {
+                val t = try {
+                    resp.body?.string().orEmpty()
+                } catch (_: Exception) {
+                    ""
+                }
                 Logs.warn("[按钮] 回应互动失败 HTTP ${resp.code}：${t.take(160)}")
                 false
             }
@@ -369,8 +385,11 @@ class QqBotClient(
 
     /** 按钮点击后的被动回复（event_id 来自 INTERACTION_CREATE），同样支持继续挂按钮 */
     fun sendInteractionReply(
-        kind: String, openid: String, eventId: String,
-        content: String, rowsJson: String?
+        kind: String,
+        openid: String,
+        eventId: String,
+        content: String,
+        rowsJson: String?,
     ): Boolean {
         val body = JSONObject().put("event_id", eventId)
         if (rowsJson != null) {
@@ -431,7 +450,9 @@ class QqBotClient(
             val referer = try {
                 val u = java.net.URL(url)
                 "${u.protocol}://${u.host}"
-            } catch (_: Exception) { null }
+            } catch (_: Exception) {
+                null
+            }
             val rb = Request.Builder()
                 .url(url)
                 .header("User-Agent", "Mozilla/5.0 (AstrBotLite)")
@@ -485,7 +506,9 @@ class QqBotClient(
             val sniff = sniffImageKind(bytes)
             val isClean = sniff == ImgKind.GIF || sniff == ImgKind.PNG || sniff == ImgKind.JPEG
             // 首选发送体：干净的 GIF/PNG/JPG 原样发（GIF 保留动图）；其余（webp/bmp/未知/非图）重编码为 PNG。
-            val first = if (isClean) bytes else {
+            val first = if (isClean) {
+                bytes
+            } else {
                 val png = reencodeToPng(bytes)
                 if (png == null) {
                     Logs.warn("[发图] 下载的内容无法解码为有效图片（可能是防盗链占位图/HTML/不支持的格式，ext=$ext），无法作为图片发送")
@@ -582,8 +605,7 @@ class QqBotClient(
     }
 
     /** 真正上传图片：base64 后 POST 到富媒体接口（file_type=1 直接作为图片消息发出）。返回是否成功 */
-    private fun postImageFile(kind: String, openid: String, data: ByteArray): Boolean =
-        postMediaFile(kind, openid, 1, data, "[发图]")
+    private fun postImageFile(kind: String, openid: String, data: ByteArray): Boolean = postMediaFile(kind, openid, 1, data, "[发图]")
 
     /** 用魔数（magic bytes）嗅探图片真实格式，比直链的后缀/文件名更可靠 */
     private enum class ImgKind { GIF, PNG, JPEG, WEBP, BMP, UNKNOWN, NOT_IMAGE }
@@ -595,8 +617,14 @@ class QqBotClient(
             at(0) == 0x47 && at(1) == 0x49 && at(2) == 0x46 -> ImgKind.GIF // GIF87a / GIF89a
             at(0) == 0x89 && at(1) == 0x50 && at(2) == 0x4E && at(3) == 0x47 -> ImgKind.PNG // \x89PNG
             at(0) == 0xFF && at(1) == 0xD8 && at(2) == 0xFF -> ImgKind.JPEG // JPEG/JFIF
-            at(0) == 0x52 && at(1) == 0x49 && at(2) == 0x46 && at(3) == 0x46 &&
-                at(8) == 0x57 && at(9) == 0x45 && at(10) == 0x42 && at(11) == 0x50 -> ImgKind.WEBP // RIFF....WEBP
+            at(0) == 0x52 &&
+                at(1) == 0x49 &&
+                at(2) == 0x46 &&
+                at(3) == 0x46 &&
+                at(8) == 0x57 &&
+                at(9) == 0x45 &&
+                at(10) == 0x42 &&
+                at(11) == 0x50 -> ImgKind.WEBP // RIFF....WEBP
             at(0) == 0x42 && at(1) == 0x4D -> ImgKind.BMP // 'BM'
             else -> {
                 // 开头像 HTML/JSON 文本的多半是防盗链占位或报错页，不是图
@@ -644,7 +672,9 @@ class QqBotClient(
                 cv.drawBitmap(bmp, 0f, 0f, null)
                 bmp.recycle()
                 flat
-            } else bmp
+            } else {
+                bmp
+            }
             val out = java.io.ByteArrayOutputStream()
             val ok = toEncode.compress(Bitmap.CompressFormat.JPEG, quality, out)
             toEncode.recycle()
@@ -735,7 +765,11 @@ class QqBotClient(
                     Logs.debug("[QQ REST] 响应 200：${text.take(200)}")
                     Logs.info("[发送] $tag 成功（$kind${if (activeFallback) "·主动兜底" else ""}）")
                     listener.onStatus(tag + " 成功")
-                    val mid = try { JSONObject(text).optString("id") } catch (_: Exception) { "" }
+                    val mid = try {
+                        JSONObject(text).optString("id")
+                    } catch (_: Exception) {
+                        ""
+                    }
                     if (mid.isNotBlank()) {
                         lastSent["$kind:$openid"] = mid to System.currentTimeMillis()
                         // 只保留最近一小时，避免长期运行堆积
@@ -837,7 +871,11 @@ class QqBotClient(
                 Logs.info("[撤回] 成功（$kind，${messageId.take(12)}…）")
                 true
             } else {
-                val body = try { resp.body?.string().orEmpty() } catch (_: Exception) { "" }
+                val body = try {
+                    resp.body?.string().orEmpty()
+                } catch (_: Exception) {
+                    ""
+                }
                 Logs.warn("[撤回] 失败 HTTP $code：${body.take(200)}")
                 false
             }
@@ -973,8 +1011,7 @@ class QqBotClient(
      * 不捏造“QQ用户·xxxx”之类的假名字——那种假名被喂给 AI 会被当真名，反而更乱
      * （例如 AI 误以为对方就叫“QQ用户·a1b2c3d4”）。没名字时让上层用通用称呼即可。
      */
-    private fun displayName(username: String?): String =
-        username?.trim().orEmpty()
+    private fun displayName(username: String?): String = username?.trim().orEmpty()
 
     private fun parseC2C(d: JSONObject?): QqMessageEvent? {
         if (d == null) return null
@@ -986,8 +1023,16 @@ class QqBotClient(
         cacheImages(d.optString("id"), images)
         val replyMsgId = extractReplyMsgId(d)
         if (openid.isBlank() || (content.isBlank() && images.isEmpty())) return null
-        return QqMessageEvent("c2c", openid, "", content, d.optString("id"), sender,
-            imageUrls = images, replyMsgId = replyMsgId)
+        return QqMessageEvent(
+            "c2c",
+            openid,
+            "",
+            content,
+            d.optString("id"),
+            sender,
+            imageUrls = images,
+            replyMsgId = replyMsgId,
+        )
     }
 
     private fun parseGroup(d: JSONObject?, eventType: String = "GROUP_MESSAGE_CREATE"): QqMessageEvent? {
@@ -1033,7 +1078,7 @@ class QqBotClient(
         }
         // 诊断日志：全量模式下未命中 atMe 时输出 mentions 原文，方便定位格式差异
         if (eventType == "GROUP_MESSAGE_CREATE" && !atMe && mentionOpenids.isNotEmpty()) {
-            Logs.debug("[群聊@诊断] mentions=${mentions.toString()} raw前80=${raw.take(80)} bot=$botOpenid")
+            Logs.debug("[群聊@诊断] mentions=$mentions raw前80=${raw.take(80)} bot=$botOpenid")
         }
         if (atMe) Logs.debug("[群聊@] 命中 atMe（eventType=$eventType, atIds=$allAtOpenids, bot=$botOpenid, author=$memberOpenid）")
         return QqMessageEvent(
@@ -1041,7 +1086,7 @@ class QqBotClient(
             atMe = atMe,
             atOpenids = allAtOpenids,
             imageUrls = images,
-            replyMsgId = replyMsgId
+            replyMsgId = replyMsgId,
         )
     }
 
@@ -1082,7 +1127,7 @@ class QqBotClient(
             memberOpenid = if (isGroup) d.optString("group_member_openid", "") else userOpenid,
             buttonId = resolved.optString("button_id", ""),
             buttonData = resolved.optString("button_data", ""),
-            messageId = resolved.optString("message_id", "")
+            messageId = resolved.optString("message_id", ""),
         )
         Logs.info("[按钮] 收到点击：id=${ev.buttonId} data=${ev.buttonData.take(60)}（${ev.kind}）")
         return ev
@@ -1112,10 +1157,9 @@ class QqBotClient(
     }
 
     /** 提取消息文本里所有 <@!openid> / <@openid> 标记的 openid */
-    private fun parseAtIds(raw: String): List<String> =
-        Regex("<@!?([^>]*)>").findAll(raw).mapNotNull { m ->
-            m.groupValues[1].trim().takeIf { it.isNotBlank() }
-        }.toList()
+    private fun parseAtIds(raw: String): List<String> = Regex("<@!?([^>]*)>").findAll(raw).mapNotNull { m ->
+        m.groupValues[1].trim().takeIf { it.isNotBlank() }
+    }.toList()
 
     /**
      * 1.7.117 强化：判定"这条群消息是否@了机器人自己"。
@@ -1169,7 +1213,7 @@ class QqBotClient(
                     obj.optJSONObject("data")?.optJSONObject("message"),
                     obj.optJSONObject("data"),
                     obj.optJSONObject("message"),
-                    obj
+                    obj,
                 )
                 for (c in candidates) {
                     if (c == null) continue
@@ -1191,8 +1235,7 @@ class QqBotClient(
         }
     }
 
-    private fun cleanContent(s: String): String =
-        s.replace(Regex("<@!?[^>]*>"), " ")
-            .replace("&nbsp;", " ")
-            .trim()
+    private fun cleanContent(s: String): String = s.replace(Regex("<@!?[^>]*>"), " ")
+        .replace("&nbsp;", " ")
+        .trim()
 }

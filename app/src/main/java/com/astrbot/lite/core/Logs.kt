@@ -29,6 +29,7 @@ object Logs {
     private const val MAX_LINES = 2000
     private const val MAX_CHARS = 240_000
     private const val MAX_LINE_CHARS = 2000
+
     /** 日志文件最大字节数：超出即砍掉最旧的一半，避免无限增长（机顶盒存储小） */
     private const val MAX_FILE_BYTES = 256 * 1024L
 
@@ -45,8 +46,8 @@ object Logs {
                             LogLine(
                                 o.optString("level", "INFO"),
                                 o.optString("text", ""),
-                                o.optLong("time", 0L)
-                            )
+                                o.optLong("time", 0L),
+                            ),
                         )
                     } catch (_: Exception) {
                     }
@@ -88,7 +89,7 @@ object Logs {
                     .put("level", level)
                     .put("text", text)
                     .put("time", time)
-                    .toString() + "\n"
+                    .toString() + "\n",
             )
         } catch (_: Exception) {
         }
@@ -98,6 +99,7 @@ object Logs {
     fun info(text: String) = add("INFO", text)
     fun warn(text: String) = add("WARN", text)
     fun err(text: String) = add("ERR", text)
+
     /** 调试级日志（详细调用追踪：请求体/响应体/LLM 改写等） */
     fun debug(text: String) = add("DEBUG", text)
 

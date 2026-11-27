@@ -29,7 +29,7 @@ class FileBrowserActivity : Activity() {
         val file: File,
         val name: String,
         val isDir: Boolean,
-        val size: Long
+        val size: Long,
     )
 
     private lateinit var tvPath: TextView
@@ -66,9 +66,13 @@ class FileBrowserActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        root.addView(titleBar, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ))
+        root.addView(
+            titleBar,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
         tvPath = TextView(this).apply {
             textSize = 12f
             setTextColor(color(R.color.textSub))
@@ -84,7 +88,12 @@ class FileBrowserActivity : Activity() {
             setPadding(0, dp(6), 0, dp(6))
         }
         root.addView(btnRow)
-        btnRow.addView(makeBtn("根目录") { curDir = Environment.getExternalStorageDirectory(); refresh() })
+        btnRow.addView(
+            makeBtn("根目录") {
+                curDir = Environment.getExternalStorageDirectory()
+                refresh()
+            },
+        )
         btnRow.addView(makeBtn("下载") { jumpTo(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)) })
         btnRow.addView(makeBtn("App 私有") { jumpTo(getExternalFilesDir(null) ?: return@makeBtn) })
 
@@ -97,19 +106,23 @@ class FileBrowserActivity : Activity() {
             setItemsCanFocus(false)
             setOnItemClickListener { _, _, position, _ -> onItemClick(position) }
         }
-        root.addView(lv, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        root.addView(
+            lv,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
         lv.setOnFocusChangeListener { _, _ -> adapter.notifyDataSetChanged() }
         DpadFocus.apply(lv)
     }
 
-    private fun makeBtn(label: String, action: () -> Unit): Button =
-        Button(this).apply {
-            text = label
-            textSize = 12f
-            setOnClickListener { action() }
-        }
+    private fun makeBtn(label: String, action: () -> Unit): Button = Button(this).apply {
+        text = label
+        textSize = 12f
+        setOnClickListener { action() }
+    }
 
     private fun jumpTo(dir: File) {
         if (dir.isDirectory) {
@@ -133,12 +146,17 @@ class FileBrowserActivity : Activity() {
             .sortedBy { it.name.lowercase() }
         val files = list.filter { it.isFile && !it.isHidden && it.canRead() }
             .filter { f ->
-                if (extFilter.isEmpty()) true
-                else extFilter.any { f.name.lowercase().endsWith(it) }
+                if (extFilter.isEmpty()) {
+                    true
+                } else {
+                    extFilter.any { f.name.lowercase().endsWith(it) }
+                }
             }
             .sortedBy { it.name.lowercase() }
-        items = (dirs.map { FileItem(it, it.name, true, 0) } +
-                files.map { FileItem(it, it.name, false, it.length()) })
+        items = (
+            dirs.map { FileItem(it, it.name, true, 0) } +
+                files.map { FileItem(it, it.name, false, it.length()) }
+            )
         adapter.notifyDataSetChanged()
         Logs.debug("[文件浏览] ${curDir.absolutePath}：${dirs.size} 目录 + ${files.size} 文件")
     }
@@ -205,18 +223,22 @@ class FileBrowserActivity : Activity() {
                 setPadding(0, 0, dp(8), 0)
             }
             val nameCol = LinearLayout(this@FileBrowserActivity).apply { orientation = LinearLayout.VERTICAL }
-            nameCol.addView(TextView(this@FileBrowserActivity).apply {
-                text = item.name
-                textSize = 14f
-                setTextColor(color(R.color.textMain))
-                maxLines = 1
-            })
+            nameCol.addView(
+                TextView(this@FileBrowserActivity).apply {
+                    text = item.name
+                    textSize = 14f
+                    setTextColor(color(R.color.textMain))
+                    maxLines = 1
+                },
+            )
             if (!item.isDir) {
-                nameCol.addView(TextView(this@FileBrowserActivity).apply {
-                    text = sizeText(item.size)
-                    textSize = 11f
-                    setTextColor(color(R.color.textSub))
-                })
+                nameCol.addView(
+                    TextView(this@FileBrowserActivity).apply {
+                        text = sizeText(item.size)
+                        textSize = 11f
+                        setTextColor(color(R.color.textSub))
+                    },
+                )
             }
             row.addView(icon)
             row.addView(nameCol, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))

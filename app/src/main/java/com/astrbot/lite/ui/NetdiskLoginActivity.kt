@@ -45,28 +45,36 @@ class NetdiskLoginActivity : Activity() {
         val PLATFORMS = linkedMapOf(
             "123" to Pair("123网盘", "https://www.123pan.com/"),
             "quark" to Pair("夸克网盘", "https://pan.quark.cn/"),
-            "uc" to Pair("UC网盘", "https://drive.uc.cn/")
+            "uc" to Pair("UC网盘", "https://drive.uc.cn/"),
         )
 
         /** 采集 Cookie 的域名（父域 + 子域 + API 域，避免漏掉登录票据） */
         private val COOKIE_DOMAINS = mapOf(
             "quark" to listOf(
-                "https://quark.cn", "https://pan.quark.cn", "https://drive.quark.cn",
-                "https://drive-pc.quark.cn", "https://pc-api.quark.cn"
+                "https://quark.cn",
+                "https://pan.quark.cn",
+                "https://drive.quark.cn",
+                "https://drive-pc.quark.cn",
+                "https://pc-api.quark.cn",
             ),
             "uc" to listOf(
-                "https://uc.cn", "https://drive.uc.cn", "https://pan.uc.cn", "https://pc-api.uc.cn"
+                "https://uc.cn",
+                "https://drive.uc.cn",
+                "https://pan.uc.cn",
+                "https://pc-api.uc.cn",
             ),
             "123" to listOf(
-                "https://123pan.com", "https://www.123pan.com",
-                "https://123pan.cn", "https://www.123pan.cn"
-            )
+                "https://123pan.com",
+                "https://www.123pan.com",
+                "https://123pan.cn",
+                "https://www.123pan.cn",
+            ),
         )
 
         private val LOGIN_KEYS = mapOf(
             "quark" to listOf("b-user-id", "__pus"),
             "uc" to listOf("b-user-id", "__pus"),
-            "123" to listOf("auth-token", "authortoken")
+            "123" to listOf("auth-token", "authortoken"),
         )
 
         /** 拖慢页面的广告 / 统计 / 埋点域名：直接拦截为空响应（2026-09 实测均存在） */
@@ -82,18 +90,18 @@ class NetdiskLoginActivity : Activity() {
             "umeng.com", "umsns.com", "cnzz.com",
             "sentry.io", "sentry-cdn.com", "browser.sentry-cdn.com",
             "hotjar.com", "mixpanel.com", "amplitude.com",
-            "adnxs.com", "criteo.com", "taboola.com"
+            "adnxs.com", "criteo.com", "taboola.com",
         )
         private val BLOCK_HOST_KEYWORD = listOf(
             "analytics", "statistic", "track", "telemetry", "beacon", "monitor",
             "logreport", "apm", "sentry", "adsdk", "ad-sdk", "feedback",
-            "retcode", "sensorsdata", "goldlog", "applog", "umeng"
+            "retcode", "sensorsdata", "goldlog", "applog", "umeng",
         )
 
         /** 平台 -> 页面内可发起的登录校验接口（同源或网盘自身允许的跨域接口） */
         private val JS_VERIFY_URL = mapOf(
             "quark" to "https://drive-pc.quark.cn/1/clouddrive/member?pr=ucpro&fr=pc&uc_param_str=",
-            "uc" to "https://pc-api.uc.cn/1/clouddrive/member?pr=UCBrowser&fr=pc&uc_param_str="
+            "uc" to "https://pc-api.uc.cn/1/clouddrive/member?pr=UCBrowser&fr=pc&uc_param_str=",
         )
 
         /**
@@ -140,17 +148,22 @@ class NetdiskLoginActivity : Activity() {
     private var loginUrl = "https://pan.quark.cn/"
     private var popDialog: Dialog? = null
     private var finishedOnce = false
+
     /** 校验防抖：进行中标志 + 上次校验时间 */
     private var verifying = false
     private var lastVerifyAt = 0L
+
     /** 进度卡住检测：页面常驻长连接（推送/轮询）会让 onProgressChanged 停在 70~90，DOM 就绪即提示可操作 */
     private var pageStartAt = 0L
     private var lastReadyCheckAt = 0L
+
     /** 加载看门狗：20 秒未完成自动重载一次（防重型页面 JS 卡死） */
     private var autoReloaded = false
+
     /** 中途登录检测：登录后回跳重型首页可能卡死，不等加载完成，滚动中轮询一次登录票据 */
     private var lastMidCheckAt = 0L
     private var midNotified = false
+
     /** 周期重注入性能优化：SPA 路由（登录后进入网盘首页）不再触发 onPageStarted，需定时兜底 */
     private val perfInjectHandler = Handler(Looper.getMainLooper())
     private val perfInjectRunnable = object : Runnable {
@@ -180,10 +193,13 @@ class NetdiskLoginActivity : Activity() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        top.addView(TextView(this).apply {
-            text = "$name 网页登录"
-            textSize = 16f
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        top.addView(
+            TextView(this).apply {
+                text = "$name 网页登录"
+                textSize = 16f
+            },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+        )
         val btnCancel = Button(this).apply { text = "取消" }
         top.addView(btnCancel)
         val btnDone = Button(this).apply { text = "完成登录" }
@@ -194,18 +210,24 @@ class NetdiskLoginActivity : Activity() {
             max = 100
             isIndeterminate = false
         }
-        root.addView(progressBar, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
+        root.addView(
+            progressBar,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
 
-        root.addView(TextView(this).apply {
-            text = if (platform == "123") {
-                "✅ $name 分享取直链无需登录、也不限文件大小。此处登录用于扩展能力；遇验证码难通过可直接点「取消」返回。"
-            } else {
-                "⚠️ $name 分享直链可能受登录/大小限制，建议登录后使用。登录成功会自动保存，也可点「完成登录」立即保存。"
-            }
-            textSize = 12f
-        })
+        root.addView(
+            TextView(this).apply {
+                text = if (platform == "123") {
+                    "✅ $name 分享取直链无需登录、也不限文件大小。此处登录用于扩展能力；遇验证码难通过可直接点「取消」返回。"
+                } else {
+                    "⚠️ $name 分享直链可能受登录/大小限制，建议登录后使用。登录成功会自动保存，也可点「完成登录」立即保存。"
+                }
+                textSize = 12f
+            },
+        )
 
         tvStatus = TextView(this).apply { textSize = 12f }
         root.addView(tvStatus)
@@ -230,22 +252,34 @@ class NetdiskLoginActivity : Activity() {
 
             override fun shouldInterceptRequest(
                 view: WebView?,
-                request: WebResourceRequest?
+                request: WebResourceRequest?,
             ): WebResourceResponse? {
                 request ?: return super.shouldInterceptRequest(view, request)
                 val host = request.url?.host?.lowercase().orEmpty()
                 if (shouldBlock(host)) return emptyResponse()
                 // 视频/直播流等大媒体资源：登录页不需要，拦截可显著提速（机顶盒性能有限）
                 val path = request.url?.encodedPath?.lowercase().orEmpty()
-                if (path.endsWith(".mp4") || path.endsWith(".m3u8") || path.endsWith(".ts") ||
-                    path.endsWith(".webm") || path.endsWith(".flv")
-                ) return emptyResponse()
+                if (path.endsWith(".mp4") ||
+                    path.endsWith(".m3u8") ||
+                    path.endsWith(".ts") ||
+                    path.endsWith(".webm") ||
+                    path.endsWith(".flv")
+                ) {
+                    return emptyResponse()
+                }
                 // 字体文件（woff2 中文子集动辄几百 KB~MB）：登录页不依赖字体图标，拦截可明显提速
                 // 例外：123 网盘界面重度依赖 iconfont，拦截会渲染空白，需放行
                 if (platform != "123" &&
-                    (path.endsWith(".woff") || path.endsWith(".woff2") || path.endsWith(".ttf") ||
-                        path.endsWith(".otf") || path.endsWith(".eot"))
-                ) return emptyResponse()
+                    (
+                        path.endsWith(".woff") ||
+                            path.endsWith(".woff2") ||
+                            path.endsWith(".ttf") ||
+                            path.endsWith(".otf") ||
+                            path.endsWith(".eot")
+                        )
+                ) {
+                    return emptyResponse()
+                }
                 return super.shouldInterceptRequest(view, request)
             }
 
@@ -264,14 +298,26 @@ class NetdiskLoginActivity : Activity() {
                 } catch (_: Exception) {
                     ""
                 }
-                if (path.endsWith(".mp4") || path.endsWith(".m3u8") || path.endsWith(".ts") ||
-                    path.endsWith(".webm") || path.endsWith(".flv")
-                ) return emptyResponse()
+                if (path.endsWith(".mp4") ||
+                    path.endsWith(".m3u8") ||
+                    path.endsWith(".ts") ||
+                    path.endsWith(".webm") ||
+                    path.endsWith(".flv")
+                ) {
+                    return emptyResponse()
+                }
                 // 123 网盘依赖 iconfont，不禁字体；其余平台拦截提速
                 if (platform != "123" &&
-                    (path.endsWith(".woff") || path.endsWith(".woff2") || path.endsWith(".ttf") ||
-                        path.endsWith(".otf") || path.endsWith(".eot"))
-                ) return emptyResponse()
+                    (
+                        path.endsWith(".woff") ||
+                            path.endsWith(".woff2") ||
+                            path.endsWith(".ttf") ||
+                            path.endsWith(".otf") ||
+                            path.endsWith(".eot")
+                        )
+                ) {
+                    return emptyResponse()
+                }
                 return super.shouldInterceptRequest(view, url)
             }
 
@@ -297,12 +343,12 @@ class NetdiskLoginActivity : Activity() {
             // 页面渲染进程异常退出（内存不足/页面过重）：提示后返回，避免白屏卡死
             override fun onRenderProcessGone(
                 view: WebView?,
-                detail: android.webkit.RenderProcessGoneDetail?
+                detail: android.webkit.RenderProcessGoneDetail?,
             ): Boolean {
                 Toast.makeText(
                     this@NetdiskLoginActivity,
                     "$name 页面加载异常（可能页面过重或内存不足），已返回。请重试或改用其他网盘",
-                    Toast.LENGTH_LONG
+                    Toast.LENGTH_LONG,
                 ).show()
                 finish()
                 return true
@@ -337,7 +383,7 @@ class NetdiskLoginActivity : Activity() {
                 view: WebView?,
                 isDialog: Boolean,
                 isUserGesture: Boolean,
-                resultMsg: Message?
+                resultMsg: Message?,
             ): Boolean {
                 val msg = resultMsg ?: return false
                 val transport = msg.obj as? WebView.WebViewTransport ?: return false
@@ -368,7 +414,7 @@ class NetdiskLoginActivity : Activity() {
                 d.show()
                 d.window?.setLayout(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+                    ViewGroup.LayoutParams.MATCH_PARENT,
                 )
                 return true
             }
@@ -378,16 +424,23 @@ class NetdiskLoginActivity : Activity() {
             }
         }
 
-        root.addView(webView, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        root.addView(
+            webView,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
 
-        root.addView(TextView(this).apply {
-            text = "提示：返回键可后退网页；如页面长时间无响应，点「重新加载」。"
-            textSize = 11f
-            setTextColor(colorOf(R.color.textSub))
-            gravity = Gravity.CENTER
-        })
+        root.addView(
+            TextView(this).apply {
+                text = "提示：返回键可后退网页；如页面长时间无响应，点「重新加载」。"
+                textSize = 11f
+                setTextColor(colorOf(R.color.textSub))
+                gravity = Gravity.CENTER
+            },
+        )
 
         setContentView(root)
 
@@ -415,7 +468,7 @@ class NetdiskLoginActivity : Activity() {
                 Toast.makeText(
                     this,
                     if (ok) "$name 登录信息已保存 ✅" else "$name Cookie 已保存（未识别到登录票据，可能尚未登录成功）",
-                    Toast.LENGTH_SHORT
+                    Toast.LENGTH_SHORT,
                 ).show()
                 asyncVerifyLogin(force = true)
             }
@@ -552,7 +605,7 @@ class NetdiskLoginActivity : Activity() {
                     "['selectstart','dragstart','gesturestart','contextmenu'].forEach(function(t){" +
                     "document.addEventListener(t,function(e){e.preventDefault();},true);});" +
                     "}catch(e){}})();",
-                null
+                null,
             )
         } catch (_: Exception) {
         }
@@ -592,7 +645,7 @@ class NetdiskLoginActivity : Activity() {
     private fun checkBlankPage() {
         try {
             webView.evaluateJavascript(
-                "(function(){try{var t=document.body?document.body.innerText.trim().length:0;var i=document.images?document.images.length:0;return (t+i);}catch(e){return -1;}})()"
+                "(function(){try{var t=document.body?document.body.innerText.trim().length:0;var i=document.images?document.images.length:0;return (t+i);}catch(e){return -1;}})()",
             ) { raw ->
                 val n = try {
                     org.json.JSONTokener(raw).nextValue().toString().toIntOrNull() ?: -1
@@ -613,7 +666,7 @@ class NetdiskLoginActivity : Activity() {
             webView.loadUrl("about:blank")
             webView.postDelayed({
                 webView.evaluateJavascript(
-                    "(function(){try{eval('var a=1;a?.b');eval('var c=1;c??2');return 'OK'}catch(e){return 'OLD'}})()"
+                    "(function(){try{eval('var a=1;a?.b');eval('var c=1;c??2');return 'OK'}catch(e){return 'OLD'}})()",
                 ) { raw ->
                     onDone(!(raw?.contains("OLD") == true))
                 }
@@ -637,8 +690,7 @@ class NetdiskLoginActivity : Activity() {
         return BLOCK_HOST_KEYWORD.any { host.contains(it) }
     }
 
-    private fun emptyResponse(): WebResourceResponse =
-        WebResourceResponse("text/plain", "UTF-8", "".byteInputStream())
+    private fun emptyResponse(): WebResourceResponse = WebResourceResponse("text/plain", "UTF-8", "".byteInputStream())
 
     /** 页面加载完成后自动保存最新 Cookie（登录态续期也不会丢） */
     private fun autoSaveCookie(showToast: Boolean) {
@@ -662,7 +714,7 @@ class NetdiskLoginActivity : Activity() {
                 Toast.makeText(
                     this,
                     "$name 检测到登录成功，已自动保存 ✅ 可点「完成登录」返回",
-                    Toast.LENGTH_LONG
+                    Toast.LENGTH_LONG,
                 ).show()
             } else if (showToast) {
                 Toast.makeText(this, "已保存当前网页的 Cookie", Toast.LENGTH_SHORT).show()
@@ -737,7 +789,7 @@ class NetdiskLoginActivity : Activity() {
                             verifying = false
                             showVerified(false)
                         }
-                        null -> okhttpVerify()  // CORS/网络异常 → 外部校验兜底
+                        null -> okhttpVerify() // CORS/网络异常 → 外部校验兜底
                     }
                 }
             }
@@ -852,15 +904,17 @@ class NetdiskLoginActivity : Activity() {
                     } else {
                         val status = s.substringBefore('|').trim().toIntOrNull()
                         val body = s.substringAfter('|', "")
-                        val loggedOut = body.contains("31001") || body.contains("require login") ||
-                            body.contains("用户未登录") || body.contains("\"errno\":-6")
+                        val loggedOut = body.contains("31001") ||
+                            body.contains("require login") ||
+                            body.contains("用户未登录") ||
+                            body.contains("\"errno\":-6")
                         onDone(
                             when {
                                 status == null -> null
                                 status == 200 && !loggedOut -> true
                                 status == 401 || status == 403 || loggedOut -> false
                                 else -> null
-                            }
+                            },
                         )
                     }
                 }

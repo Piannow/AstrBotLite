@@ -16,8 +16,10 @@ import java.io.File
 object ChatStore {
     /** 落盘上限：超过即裁剪（与 Logs 同思路，防止无限增长） */
     private const val MAX_BYTES = 2L * 1024 * 1024
+
     /** 裁剪后保留的条数（足够覆盖 UI 的 1000 条展示 + 余量） */
     private const val KEEP_LINES = 1200
+
     /** 读取时展示的条数 */
     private const val SHOW_LINES = 1000
 
@@ -103,8 +105,8 @@ object ChatStore {
                             o.optString("from", "user"),
                             o.optString("content", ""),
                             o.optLong("time", System.currentTimeMillis()),
-                            o.optString("session", "")
-                        )
+                            o.optString("session", ""),
+                        ),
                     )
                 } catch (_: Exception) {
                 }
@@ -126,7 +128,7 @@ object ChatStore {
                             .put("content", e.content)
                             .put("time", e.time)
                             .put("session", e.session)
-                            .toString()
+                            .toString(),
                     ).append('\n')
                 }
                 file.writeText(sb.toString())
@@ -152,7 +154,7 @@ object ChatStore {
                             .put("content", e.content)
                             .put("time", e.time)
                             .put("session", e.session)
-                            .toString()
+                            .toString(),
                     ).append('\n')
                 }
                 file.writeText(sb.toString())

@@ -6,9 +6,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.widget.Toast
-import java.io.File
-import org.json.JSONObject
 import androidx.core.content.FileProvider
+import org.json.JSONObject
+import java.io.File
 
 /**
  * 配置一键分享 / 一键导入（1.7.173）
@@ -29,51 +29,53 @@ object ConfigExport {
     private const val FILE_NAME = "astrbot_lite_config.json"
 
     /** 导出当前配置到文件，返回文件绝对路径（失败返回 null） */
-    fun export(ctx: Context): String? {
-        return try {
-            val json = JSONObject()
-            json.put("magic", MAGIC)
-            json.put("version", VERSION)
-            json.put("exported_at", System.currentTimeMillis())
-            json.put("device", Build.MANUFACTURER + " " + Build.MODEL)
-            json.put("app_version", com.astrbot.lite.BuildConfig.VERSION_NAME)
+    fun export(ctx: Context): String? = try {
+        val json = JSONObject()
+        json.put("magic", MAGIC)
+        json.put("version", VERSION)
+        json.put("exported_at", System.currentTimeMillis())
+        json.put("device", Build.MANUFACTURER + " " + Build.MODEL)
+        json.put("app_version", com.astrbot.lite.BuildConfig.VERSION_NAME)
 
-            val raw = ctx.getSharedPreferences("astrbot_lite", Context.MODE_PRIVATE)
-            val all = raw.all
-            val str = JSONObject()
-            val bool = JSONObject()
-            val int = JSONObject()
-            val long = JSONObject()
-            val float = JSONObject()
-            // 简单判定类型：Config.kt 里键名约定，用 sp 直接读再判断
-            for ((k, v) in all) {
-                when (v) {
-                    is String -> str.put(k, v)
-                    is Boolean -> bool.put(k, v)
-                    is Int -> int.put(k, v)
-                    is Long -> long.put(k, v)
-                    is Float -> float.put(k, v)
-                    is Short -> int.put(k, (v as Short).toInt())
-                    is Byte -> int.put(k, (v as Byte).toInt())
-                }
+        val raw = ctx.getSharedPreferences("astrbot_lite", Context.MODE_PRIVATE)
+        val all = raw.all
+        val str = JSONObject()
+        val bool = JSONObject()
+        val int = JSONObject()
+        val long = JSONObject()
+        val float = JSONObject()
+        // 简单判定类型：Config.kt 里键名约定，用 sp 直接读再判断
+        for ((k, v) in all) {
+            when (v) {
+                is String -> str.put(k, v)
+                is Boolean -> bool.put(k, v)
+                is Int -> int.put(k, v)
+                is Long -> long.put(k, v)
+                is Float -> float.put(k, v)
+                is Short -> int.put(k, (v as Short).toInt())
+                is Byte -> int.put(k, (v as Byte).toInt())
             }
-            json.put("string", str)
-            json.put("boolean", bool)
-            json.put("int", int)
-            json.put("long", long)
-            json.put("float", float)
-            // v2：AI 池 + 账号快照（"完美迁移"）
-            try { json.put("ai_pool", AiPool.exportSnapshot()) } catch (_: Throwable) {}
-            try { json.put("accounts", AccountManager.exportSnapshot()) } catch (_: Throwable) {}
-
-            val dir = getDownloadDir(ctx)
-            val target = File(dir, FILE_NAME)
-            target.writeText(json.toString(2))
-            target.absolutePath
-        } catch (e: Exception) {
-            Toast.makeText(ctx, "导出失败: ${e.message}", Toast.LENGTH_LONG).show()
-            null
         }
+        json.put("string", str)
+        json.put("boolean", bool)
+        json.put("int", int)
+        json.put("long", long)
+        json.put("float", float)
+        // v2：AI 池 + 账号快照（"完美迁移"）
+        try {
+            json.put("ai_pool", AiPool.exportSnapshot())
+        } catch (_: Throwable) {}
+        try {
+            json.put("accounts", AccountManager.exportSnapshot())
+        } catch (_: Throwable) {}
+
+        val dir = getDownloadDir(ctx)
+        val target = File(dir, FILE_NAME)
+        target.writeText(json.toString(2))
+        target.absolutePath
+    } catch (e: Exception) {
+        Toast.makeText(ctx, "导出失败: ${e.message}", Toast.LENGTH_LONG).show()
+        null
     }
 
     /** 用 Intent 把配置文件分享出去（系统分享面板：微信/QQ/其它） */
@@ -103,10 +105,10 @@ object ConfigExport {
     fun import(ctx: Context, uri: Uri): Boolean {
         return try {
             val text = ctx.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
-            ?: run {
-                Toast.makeText(ctx, "读取文件失败", Toast.LENGTH_LONG).show()
-                return false
-            }
+                ?: run {
+                    Toast.makeText(ctx, "读取文件失败", Toast.LENGTH_LONG).show()
+                    return false
+                }
             val json = JSONObject(text)
             if (json.optString("magic") != MAGIC) {
                 Toast.makeText(ctx, "不是有效的配置文件（缺少 magic 标识）", Toast.LENGTH_LONG).show()
@@ -120,8 +122,16 @@ object ConfigExport {
             applySection(json.optJSONObject("float")) { k, v -> sp.putFloat(k, v as Float) }
             sp.apply()
             // v2：恢复 AI 池 + 账号快照
-            try { json.optJSONObject("ai_pool")?.let { AiPool.importSnapshot(it) } } catch (e: Exception) { android.util.Log.w("ConfigExport", "ai_pool: ${e.message}") }
-            try { json.optJSONObject("accounts")?.let { AccountManager.importSnapshot(it) } } catch (e: Exception) { android.util.Log.w("ConfigExport", "accounts: ${e.message}") }
+            try {
+                json.optJSONObject("ai_pool")?.let { AiPool.importSnapshot(it) }
+            } catch (e: Exception) {
+                android.util.Log.w("ConfigExport", "ai_pool: ${e.message}")
+            }
+            try {
+                json.optJSONObject("accounts")?.let { AccountManager.importSnapshot(it) }
+            } catch (e: Exception) {
+                android.util.Log.w("ConfigExport", "accounts: ${e.message}")
+            }
             Toast.makeText(ctx, "配置导入成功，重启应用生效", Toast.LENGTH_LONG).show()
             true
         } catch (e: Exception) {
@@ -132,7 +142,7 @@ object ConfigExport {
 
     private inline fun applySection(
         obj: JSONObject?,
-        crossinline put: (String, Any) -> Unit
+        crossinline put: (String, Any) -> Unit,
     ) {
         if (obj == null) return
         for (k in obj.keys()) {

@@ -410,12 +410,12 @@ object PluginWebUiBridge {
         // ① type=module → data-mod（依赖图转译链路）
         var processed = html.replace(
             Regex("""type\s*=\s*["']module["']""", RegexOption.IGNORE_CASE),
-            """type="text/plain" data-mod="1""""
+            """type="text/plain" data-mod="1"""",
         )
         // ② 无 type 且带 src 的 classic <script> → data-lazy（顺序接管：检测新语法按需转译）
         //    （companion 实证：app.js 是 classic、2.3MB 现代语法——只接管 module 会漏掉它）
         processed = processed.replace(
-            Regex("""<script(?![^>]*\stype\s*=)[^>]*\ssrc\s*=\s*["'][^"']+["'][^>]*>""", RegexOption.IGNORE_CASE)
+            Regex("""<script(?![^>]*\stype\s*=)[^>]*\ssrc\s*=\s*["'][^"']+["'][^>]*>""", RegexOption.IGNORE_CASE),
         ) { m ->
             m.value.replaceFirst("<script", """<script type="text/plain" data-lazy="1"""")
         }
@@ -425,7 +425,7 @@ object PluginWebUiBridge {
         //    WebView 按 1280 宽渲染后整体缩放至屏宽，横竖屏均完整可见、不横向溢出。
         processed = processed.replace(
             Regex("""(<meta[^>]*name=["']viewport["'][^>]*content=["'])[^"']*""", RegexOption.IGNORE_CASE),
-            "$1width=1280, initial-scale=1"
+            "$1width=1280, initial-scale=1",
         )
         val noModule = processed
         val style = "<style>*:focus{outline:none!important;-webkit-tap-highlight-color:transparent;}" +

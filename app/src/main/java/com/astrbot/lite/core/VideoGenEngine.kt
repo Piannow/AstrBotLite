@@ -48,7 +48,7 @@ object VideoGenEngine {
                 baseUrl = pool.baseUrl,
                 apiKey = pool.apiKey,
                 model = pool.model,
-                size = m["size"]?.trim()?.takeIf { it.isNotBlank() } ?: "1280x720"
+                size = m["size"]?.trim()?.takeIf { it.isNotBlank() } ?: "1280x720",
             )
         }
         val m = PluginManager.configMap(pluginId)
@@ -56,7 +56,7 @@ object VideoGenEngine {
             baseUrl = m["baseUrl"]?.trim().orEmpty(),
             apiKey = m["apiKey"]?.trim().orEmpty(),
             model = m["model"]?.trim().orEmpty(),
-            size = m["size"]?.trim()?.takeIf { it.isNotBlank() } ?: "1280x720"
+            size = m["size"]?.trim()?.takeIf { it.isNotBlank() } ?: "1280x720",
         )
     }
 
@@ -72,8 +72,11 @@ object VideoGenEngine {
         return try {
             val base = cfg.baseUrl.trim().trimEnd('/')
             // 服务地址可填到 /video/ 一级（如 .../v1/video/submit），也可只填根（自动补 /video/generations 再退 /video/submit）
-            val endpoints = if (base.contains("/video/")) listOf(base)
-            else listOf("$base/video/generations", "$base/video/submit")
+            val endpoints = if (base.contains("/video/")) {
+                listOf(base)
+            } else {
+                listOf("$base/video/generations", "$base/video/submit")
+            }
             val body = JSONObject()
                 .put("model", cfg.model)
                 .put("prompt", clean)

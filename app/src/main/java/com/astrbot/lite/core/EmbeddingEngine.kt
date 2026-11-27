@@ -28,8 +28,7 @@ object EmbeddingEngine {
         .build()
 
     private val queryCache = object : LinkedHashMap<String, FloatArray>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, FloatArray>?): Boolean =
-            size > CACHE_MAX
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, FloatArray>?): Boolean = size > CACHE_MAX
     }
 
     private fun ensureDir(): File {
@@ -39,8 +38,7 @@ object EmbeddingEngine {
         return dir
     }
 
-    fun configured(): Boolean =
-        Config.knowledgeEmbedBaseUrl.isNotBlank() &&
+    fun configured(): Boolean = Config.knowledgeEmbedBaseUrl.isNotBlank() &&
         Config.knowledgeEmbedApiKey.isNotBlank() &&
         Config.knowledgeEmbedModel.isNotBlank()
 
@@ -94,7 +92,9 @@ object EmbeddingEngine {
 
     fun cosine(a: FloatArray, b: FloatArray): Float {
         if (a.size != b.size) return 0f
-        var dot = 0f; var na = 0f; var nb = 0f
+        var dot = 0f
+        var na = 0f
+        var nb = 0f
         for (i in a.indices) {
             dot += a[i] * b[i]
             na += a[i] * a[i]
@@ -114,7 +114,9 @@ object EmbeddingEngine {
             val out = FloatArray(arr.length())
             for (i in 0 until arr.length()) out[i] = arr.optDouble(i, 0.0).toFloat()
             out
-        } catch (_: Exception) { null }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     fun saveVector(id: String, v: FloatArray) {
@@ -130,10 +132,14 @@ object EmbeddingEngine {
     }
 
     fun deleteVector(id: String) {
-        try { File(ensureDir(), id + ".json").delete() } catch (_: Exception) {}
+        try {
+            File(ensureDir(), id + ".json").delete()
+        } catch (_: Exception) {}
     }
 
     fun deleteAll() {
-        try { ensureDir().listFiles()?.forEach { it.delete() } } catch (_: Exception) {}
+        try {
+            ensureDir().listFiles()?.forEach { it.delete() }
+        } catch (_: Exception) {}
     }
 }

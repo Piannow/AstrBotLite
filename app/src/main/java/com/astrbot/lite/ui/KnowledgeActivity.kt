@@ -46,16 +46,22 @@ class KnowledgeActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        root.addView(top, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ))
-        top.addView(TextView(this).apply {
-            text = "知识库"
-            textSize = 18f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setTextColor(color(R.color.textMain))
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        root.addView(
+            top,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        top.addView(
+            TextView(this).apply {
+                text = "知识库"
+                textSize = 18f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(color(R.color.textMain))
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+        )
         tvCount = TextView(this).apply {
             textSize = 12f
             setTextColor(color(R.color.textSub))
@@ -68,18 +74,27 @@ class KnowledgeActivity : Activity() {
             setPadding(0, dp(12), 0, dp(8))
         }
         root.addView(btnRow)
-        btnRow.addView(Button(this).apply {
-            text = "+ 新增"
-            setOnClickListener { showAddDialog() }
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        btnRow.addView(Button(this).apply {
-            text = "重建索引"
-            setOnClickListener { rebuildIndex() }
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        btnRow.addView(Button(this).apply {
-            text = "清空"
-            setOnClickListener { confirmClear() }
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        btnRow.addView(
+            Button(this).apply {
+                text = "+ 新增"
+                setOnClickListener { showAddDialog() }
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+        )
+        btnRow.addView(
+            Button(this).apply {
+                text = "重建索引"
+                setOnClickListener { rebuildIndex() }
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+        )
+        btnRow.addView(
+            Button(this).apply {
+                text = "清空"
+                setOnClickListener { confirmClear() }
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+        )
 
         // 列表
         adapter = EntryAdapter()
@@ -87,16 +102,23 @@ class KnowledgeActivity : Activity() {
             adapter = this@KnowledgeActivity.adapter
             setOnItemClickListener { _, _, position, _ -> showEntryMenu(position) }
         }
-        root.addView(listView, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        root.addView(
+            listView,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
 
         refresh()
     }
 
     private fun refresh() {
         entries.clear()
-        try { entries.addAll(KnowledgeBase.list()) } catch (_: Throwable) {}
+        try {
+            entries.addAll(KnowledgeBase.list())
+        } catch (_: Throwable) {}
         tvCount.text = entries.size.toString() + " 条"
         adapter.notifyDataSetChanged()
     }
@@ -128,14 +150,20 @@ class KnowledgeActivity : Activity() {
             setPadding(dp(16), dp(8), dp(16), dp(8))
         }
         col.addView(etTitle)
-        col.addView(etContent, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(8) })
-        col.addView(etTags, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(8) })
+        col.addView(
+            etContent,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(8) },
+        )
+        col.addView(
+            etTags,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(8) },
+        )
 
         val dlg = AlertDialog.Builder(this)
             .setTitle("新增知识条目")
@@ -155,7 +183,7 @@ class KnowledgeActivity : Activity() {
                     source = "手动录入",
                     sourcePerson = "",
                     createdAt = System.currentTimeMillis(),
-                    tags = tags
+                    tags = tags,
                 )
                 try {
                     KnowledgeBase.add(entry)
@@ -164,7 +192,10 @@ class KnowledgeActivity : Activity() {
                             val v = com.astrbot.lite.core.EmbeddingEngine.embed(entry.title + "\n" + entry.content)
                             if (v != null) com.astrbot.lite.core.EmbeddingEngine.saveVector(entry.id, v)
                         } catch (_: Throwable) {}
-                    }.apply { isDaemon = true; start() }
+                    }.apply {
+                        isDaemon = true
+                        start()
+                    }
                     refresh()
                     Toast.makeText(this, "已入库", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
@@ -175,10 +206,16 @@ class KnowledgeActivity : Activity() {
             .create()
         dlg.setOnShowListener {
             dlg.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {
-                isFocusable = true; isFocusableInTouchMode = true; stateListAnimator = null; DpadFocus.highlight(this)
+                isFocusable = true
+                isFocusableInTouchMode = true
+                stateListAnimator = null
+                DpadFocus.highlight(this)
             }
             dlg.getButton(AlertDialog.BUTTON_NEGATIVE)?.apply {
-                isFocusable = true; isFocusableInTouchMode = true; stateListAnimator = null; DpadFocus.highlight(this)
+                isFocusable = true
+                isFocusableInTouchMode = true
+                stateListAnimator = null
+                DpadFocus.highlight(this)
             }
             etTitle.requestFocus()
         }
@@ -222,7 +259,9 @@ class KnowledgeActivity : Activity() {
             .setPositiveButton("删除") { _, _ ->
                 try {
                     KnowledgeBase.remove(entry.id)
-                    try { com.astrbot.lite.core.EmbeddingEngine.deleteVector(entry.id) } catch (_: Throwable) {}
+                    try {
+                        com.astrbot.lite.core.EmbeddingEngine.deleteVector(entry.id)
+                    } catch (_: Throwable) {}
                     refresh()
                     Toast.makeText(this, "已删除", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
@@ -233,10 +272,17 @@ class KnowledgeActivity : Activity() {
             .create()
         dlg.setOnShowListener {
             dlg.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {
-                isFocusable = true; isFocusableInTouchMode = true; stateListAnimator = null; DpadFocus.highlight(this); requestFocus()
+                isFocusable = true
+                isFocusableInTouchMode = true
+                stateListAnimator = null
+                DpadFocus.highlight(this)
+                requestFocus()
             }
             dlg.getButton(AlertDialog.BUTTON_NEGATIVE)?.apply {
-                isFocusable = true; isFocusableInTouchMode = true; stateListAnimator = null; DpadFocus.highlight(this)
+                isFocusable = true
+                isFocusableInTouchMode = true
+                stateListAnimator = null
+                DpadFocus.highlight(this)
             }
         }
         dlg.show()
@@ -249,7 +295,9 @@ class KnowledgeActivity : Activity() {
             .setPositiveButton("确定") { _, _ ->
                 try {
                     KnowledgeBase.clear()
-                    try { com.astrbot.lite.core.EmbeddingEngine.deleteAll() } catch (_: Throwable) {}
+                    try {
+                        com.astrbot.lite.core.EmbeddingEngine.deleteAll()
+                    } catch (_: Throwable) {}
                     refresh()
                     Toast.makeText(this, "已清空", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
@@ -260,10 +308,17 @@ class KnowledgeActivity : Activity() {
             .create()
         dlg.setOnShowListener {
             dlg.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {
-                isFocusable = true; isFocusableInTouchMode = true; stateListAnimator = null; DpadFocus.highlight(this); requestFocus()
+                isFocusable = true
+                isFocusableInTouchMode = true
+                stateListAnimator = null
+                DpadFocus.highlight(this)
+                requestFocus()
             }
             dlg.getButton(AlertDialog.BUTTON_NEGATIVE)?.apply {
-                isFocusable = true; isFocusableInTouchMode = true; stateListAnimator = null; DpadFocus.highlight(this)
+                isFocusable = true
+                isFocusableInTouchMode = true
+                stateListAnimator = null
+                DpadFocus.highlight(this)
             }
         }
         dlg.show()
@@ -304,14 +359,21 @@ class KnowledgeActivity : Activity() {
                     if (v != null) {
                         com.astrbot.lite.core.EmbeddingEngine.saveVector(e.id, v)
                         ok++
-                    } else fail++
-                } catch (_: Throwable) { fail++ }
+                    } else {
+                        fail++
+                    }
+                } catch (_: Throwable) {
+                    fail++
+                }
             }
             runOnUiThread {
                 dialog.dismiss()
                 Toast.makeText(this, "重建完成：成功 " + ok + " / 失败 " + fail, Toast.LENGTH_LONG).show()
             }
-        }.apply { isDaemon = true; start() }
+        }.apply {
+            isDaemon = true
+            start()
+        }
     }
 
     inner class EntryAdapter : BaseAdapter() {
@@ -330,33 +392,39 @@ class KnowledgeActivity : Activity() {
             }
             val lp = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
+                LinearLayout.LayoutParams.WRAP_CONTENT,
             )
             lp.bottomMargin = dp(8)
             row.layoutParams = lp
 
-            row.addView(TextView(this@KnowledgeActivity).apply {
-                text = e.title
-                textSize = 14f
-                setTypeface(typeface, android.graphics.Typeface.BOLD)
-                setTextColor(color(R.color.textMain))
-            })
+            row.addView(
+                TextView(this@KnowledgeActivity).apply {
+                    text = e.title
+                    textSize = 14f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    setTextColor(color(R.color.textMain))
+                },
+            )
 
-            row.addView(TextView(this@KnowledgeActivity).apply {
-                text = if (e.content.length > 120) e.content.take(120) + "…" else e.content
-                textSize = 12f
-                setTextColor(color(R.color.textSub))
-                setPadding(0, dp(4), 0, dp(4))
-            })
+            row.addView(
+                TextView(this@KnowledgeActivity).apply {
+                    text = if (e.content.length > 120) e.content.take(120) + "…" else e.content
+                    textSize = 12f
+                    setTextColor(color(R.color.textSub))
+                    setPadding(0, dp(4), 0, dp(4))
+                },
+            )
 
             val bottom = StringBuilder()
             if (e.tags.isNotBlank()) bottom.append("标签：").append(e.tags).append("  ")
             bottom.append(fmt.format(Date(e.createdAt)))
-            row.addView(TextView(this@KnowledgeActivity).apply {
-                text = bottom.toString()
-                textSize = 10f
-                setTextColor(color(R.color.textSub))
-            })
+            row.addView(
+                TextView(this@KnowledgeActivity).apply {
+                    text = bottom.toString()
+                    textSize = 10f
+                    setTextColor(color(R.color.textSub))
+                },
+            )
 
             return row
         }

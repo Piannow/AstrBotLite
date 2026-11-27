@@ -25,12 +25,13 @@ object DpadFocus {
     internal const val TAG_HL = 0x0A12_0001
     private const val TAG_BG = 0x0A12_0002
     private const val TAG_TEXT = 0x0A12_0003
+
     /** 不可见：控件在页面焦点顺序表中的下标（用户看不到，仅用于方向键定位） */
     internal const val TAG_ORDER = 0x0A12_0004
 
-    private const val FOCUS_COLOR = "#4C6FFF"       // 主色：获得焦点的实心背景（现代亮蓝）
-    private const val FOCUS_LIGHT = "#E8EEFF"       // 浅主色：输入框用淡背景
-    private const val FOCUS_STROKE = "#FFFFFF"      // 焦点描边：内圈白线，提升层次
+    private const val FOCUS_COLOR = "#4C6FFF" // 主色：获得焦点的实心背景（现代亮蓝）
+    private const val FOCUS_LIGHT = "#E8EEFF" // 浅主色：输入框用淡背景
+    private const val FOCUS_STROKE = "#FFFFFF" // 焦点描边：内圈白线，提升层次
 
     /** 给单个控件加焦点高亮（幂等）。列表行内的按钮在 getView 里调用。 */
     /** 给可聚焦 ViewGroup 容器加高亮（仅改背景不改文字） */
@@ -49,8 +50,11 @@ object DpadFocus {
                 view.elevation = 6 * d
             } else {
                 val orig = view.getTag(TAG_BG) as? android.graphics.drawable.Drawable
-                if (orig != null) view.background = orig
-                else view.background = android.graphics.drawable.ColorDrawable(Color.TRANSPARENT)
+                if (orig != null) {
+                    view.background = orig
+                } else {
+                    view.background = android.graphics.drawable.ColorDrawable(Color.TRANSPARENT)
+                }
                 view.elevation = 0f
             }
         }
@@ -228,7 +232,8 @@ object DpadFocus {
                 android.view.KeyEvent.KEYCODE_DPAD_UP,
                 android.view.KeyEvent.KEYCODE_DPAD_DOWN,
                 android.view.KeyEvent.KEYCODE_DPAD_LEFT,
-                android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> true
+                android.view.KeyEvent.KEYCODE_DPAD_RIGHT,
+                -> true
                 else -> false
             }
             if (!isDpad) return@setOnKeyListener false
@@ -350,7 +355,10 @@ object DpadFocus {
         listView.setOnKeyListener { v, keyCode, event ->
             if (event.action != android.view.KeyEvent.ACTION_DOWN) return@setOnKeyListener false
             if (keyCode != android.view.KeyEvent.KEYCODE_DPAD_UP &&
-                keyCode != android.view.KeyEvent.KEYCODE_DPAD_DOWN) return@setOnKeyListener false
+                keyCode != android.view.KeyEvent.KEYCODE_DPAD_DOWN
+            ) {
+                return@setOnKeyListener false
+            }
             val up = keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP
             val count = listView.adapter?.count ?: return@setOnKeyListener false
             if (count <= 0) return@setOnKeyListener false

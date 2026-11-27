@@ -26,7 +26,7 @@ object ImageGenEngine {
         val apiKey: String = "",
         val model: String = "",
         val size: String = "1024x1024",
-        val responseFormat: String = ""
+        val responseFormat: String = "",
     ) {
         val valid: Boolean get() = baseUrl.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank()
     }
@@ -39,7 +39,7 @@ object ImageGenEngine {
             apiKey = m["apiKey"]?.trim().orEmpty(),
             model = m["model"]?.trim().orEmpty(),
             size = m["size"]?.trim()?.takeIf { it.isNotBlank() } ?: "1024x1024",
-            responseFormat = m["responseFormat"]?.trim().orEmpty()
+            responseFormat = m["responseFormat"]?.trim().orEmpty(),
         )
         val pool = AiPool.mediaEntry("image") ?: return pluginCfg
         return GenConfig(
@@ -47,7 +47,7 @@ object ImageGenEngine {
             apiKey = pool.apiKey.ifBlank { pluginCfg.apiKey },
             model = pool.model.ifBlank { pluginCfg.model },
             size = pluginCfg.size,
-            responseFormat = pluginCfg.responseFormat
+            responseFormat = pluginCfg.responseFormat,
         )
     }
 
@@ -102,7 +102,7 @@ object ImageGenEngine {
         if (clean.isBlank()) return null
         val cfg = config(pluginId)
         if (!cfg.valid) {
-            Logs.warn("[文生图] 未配置文生图服务（需在 ${pluginId} 插件配置中填 baseUrl / apiKey / model）")
+            Logs.warn("[文生图] 未配置文生图服务（需在 $pluginId 插件配置中填 baseUrl / apiKey / model）")
             return null
         }
         return try {
@@ -181,10 +181,12 @@ object ImageGenEngine {
                 .addFormDataPart("n", "1")
                 .addFormDataPart("size", cfg.size)
                 .build()
-            val resp = http.newCall(Request.Builder()
-                .url(endpoint)
-                .header("Authorization", "Bearer ${cfg.apiKey}")
-                .post(body).build()).execute()
+            val resp = http.newCall(
+                Request.Builder()
+                    .url(endpoint)
+                    .header("Authorization", "Bearer ${cfg.apiKey}")
+                    .post(body).build(),
+            ).execute()
             val bodyStr = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) {
                 Logs.warn("[图生图] ①images/edits HTTP ${resp.code}: ${bodyStr.take(160)}")
@@ -232,9 +234,12 @@ object ImageGenEngine {
             contentArr.put(org.json.JSONObject().put("type", "image_url").put("image_url", b64))
             val body = JSONObject()
                 .put("model", cfg.model)
-                .put("messages", org.json.JSONArray().put(
-                    org.json.JSONObject().put("role", "user").put("content", contentArr)
-                ))
+                .put(
+                    "messages",
+                    org.json.JSONArray().put(
+                        org.json.JSONObject().put("role", "user").put("content", contentArr),
+                    ),
+                )
                 .put("max_tokens", 4096)
             val endpoint = endpointFor(cfg.baseUrl, "/chat/completions")
             val req = Request.Builder()
@@ -330,7 +335,7 @@ object ImageGenEngine {
                 Request.Builder().url(url)
                     .header("User-Agent", "Mozilla/5.0 (AstrBotLite)")
                     .get()
-                    .build()
+                    .build(),
             ).execute()
             if (!r.isSuccessful) {
                 Logs.warn("[文生图] 图片下载 HTTP ${r.code}：$url")

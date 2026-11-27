@@ -11,20 +11,20 @@ import java.util.concurrent.ConcurrentHashMap
  */
 data class UserProfile(
     val uid: String,
-    var name: String = "",      // 显示名 sender
-    var gender: String = "",    // 性别
-    var nickname: String = "",  // 期望称呼
-    var age: String = "",       // 年龄
-    var city: String = "",      // 城市
+    var name: String = "", // 显示名 sender
+    var gender: String = "", // 性别
+    var nickname: String = "", // 期望称呼
+    var age: String = "", // 年龄
+    var city: String = "", // 城市
     var interests: String = "", // 兴趣
-    var notes: String = "",     // 其他事实（自由文本，追加）
-    var msgCount: Int = 0,      // 参与消息数（用于低频提取节流）
+    var notes: String = "", // 其他事实（自由文本，追加）
+    var msgCount: Int = 0, // 参与消息数（用于低频提取节流）
     var lastExtractAt: Int = 0, // 上次画像提取时的 msgCount
     var lastSeen: Long = 0L,
     var updatedAt: Long = 0L,
-    var favorability: Int = 50,     // v1.5.0 好感度 0-100
-    var favorNote: String = "",     // v1.5.0 好感度备注/综合评价
-    var qqId: String = ""           // v1.5.0 QQ号（用于名单判断与画像查看）
+    var favorability: Int = 50, // v1.5.0 好感度 0-100
+    var favorNote: String = "", // v1.5.0 好感度备注/综合评价
+    var qqId: String = "", // v1.5.0 QQ号（用于名单判断与画像查看）
 ) {
     fun toJson(): String {
         val o = JSONObject()
@@ -47,8 +47,7 @@ data class UserProfile(
     }
 
     /** 关键画像字段全空 → 认为画像不完整，需要继续提取 */
-    fun isIncomplete(): Boolean =
-        gender.isBlank() && nickname.isBlank() && age.isBlank() && city.isBlank() && interests.isBlank() && notes.isBlank()
+    fun isIncomplete(): Boolean = gender.isBlank() && nickname.isBlank() && age.isBlank() && city.isBlank() && interests.isBlank() && notes.isBlank()
 
     /** 渲染注入文本：跳过空字段；全部为空返回 ""（不注入） */
     fun render(): String {
@@ -103,7 +102,7 @@ data class UserProfile(
                 updatedAt = o.optLong("updatedAt", 0),
                 favorability = o.optInt("favorability", 50),
                 favorNote = o.optString("favorNote"),
-                qqId = o.optString("qqId")
+                qqId = o.optString("qqId"),
             )
         }
     }

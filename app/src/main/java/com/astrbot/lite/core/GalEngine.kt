@@ -16,6 +16,7 @@ object GalEngine {
     private const val PAGE_SIZE = 8
 
     private val jsonMt: MediaType = "application/json; charset=utf-8".toMediaType()
+
     // 1.7.237：加上 callTimeout + 瞬时失败重试（站点偶发 502/429 或连接被重置时不再直接判失败）
     private val http: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(12, TimeUnit.SECONDS)
@@ -37,13 +38,13 @@ object GalEngine {
         val languages: String,
         val coverUrl: String,
         val rank: Int,
-        val metric: Double
+        val metric: Double,
     )
 
     data class GalPage(
         val total: Int,
         val gte: Boolean,
-        val items: List<GalItem>
+        val items: List<GalItem>,
     )
 
     data class GalDetail(
@@ -59,7 +60,7 @@ object GalEngine {
         val views: Long,
         val likes: Long,
         val published: Boolean,
-        val coverUrl: String
+        val coverUrl: String,
     )
 
     data class GalRes(
@@ -72,19 +73,19 @@ object GalEngine {
         val state: String,
         val workId: String,
         val workName: String,
-        val note: String
+        val note: String,
     )
 
     data class GalDownload(
         val urls: List<String>,
         val extractionCode: String,
-        val archivePassword: String
+        val archivePassword: String,
     )
 
     data class GalResPage(
         val total: Int,
         val gte: Boolean,
-        val items: List<GalRes>
+        val items: List<GalRes>,
     )
 
     private fun typeZh(t: String): String = when (t) {
@@ -139,8 +140,7 @@ object GalEngine {
         else -> p
     }
 
-    private fun joinMapped(values: List<String>, map: (String) -> String): String =
-        values.map(map).distinct().joinToString("/")
+    private fun joinMapped(values: List<String>, map: (String) -> String): String = values.map(map).distinct().joinToString("/")
 
     private fun sliceDate(date: String, precision: String): String = when (precision) {
         "year" -> date.take(4)
@@ -152,7 +152,9 @@ object GalEngine {
         val zh = localized.optJSONObject("zh-Hans")?.optString("value") ?: ""
         val origin = if (zh.isBlank()) {
             latin?.takeIf { it.isNotBlank() } ?: display
-        } else display
+        } else {
+            display
+        }
         val name = if (zh.isBlank()) display else zh
         return Pair(name, origin)
     }
@@ -271,8 +273,8 @@ object GalEngine {
             out.add(
                 GalItem(
                     id, name, originStr, "", null, 0, "", "", coverUrl,
-                    e.optInt("rank"), e.optDouble("metric_value")
-                )
+                    e.optInt("rank"), e.optDouble("metric_value"),
+                ),
             )
         }
         return out
@@ -300,7 +302,7 @@ object GalEngine {
         val coverUrl = o.optJSONObject("cover")?.optString("url") ?: ""
         return GalDetail(
             name, originStr, aliases, slicedDate, maker, rating, ratingCount,
-            platforms, languages, views, likes, published, coverUrl
+            platforms, languages, views, likes, published, coverUrl,
         )
     }
 
@@ -315,7 +317,7 @@ object GalEngine {
         return GalResPage(
             root.optInt("total"),
             root.optString("total_relation") == "gte",
-            parseResList(root, "")
+            parseResList(root, ""),
         )
     }
 
@@ -372,8 +374,8 @@ object GalEngine {
             out.add(
                 GalRes(
                     id, type, title, size, providers, languages, state,
-                    workId, workNameOf(w), docText(r.optJSONObject("content"), 300)
-                )
+                    workId, workNameOf(w), docText(r.optJSONObject("content"), 300),
+                ),
             )
         }
         return out
@@ -391,7 +393,7 @@ object GalEngine {
         return GalDownload(
             urls,
             o.optString("extraction_code", ""),
-            o.optString("archive_password", "")
+            o.optString("archive_password", ""),
         )
     }
 

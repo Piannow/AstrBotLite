@@ -4,9 +4,7 @@ import android.content.Context
 import android.os.Process
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 import java.util.ArrayDeque
-import java.util.HashMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
@@ -34,7 +32,9 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
     }
 
     private var client: QqBotClient? = null
+
     @Volatile private var running = false
+
     @Volatile private var lastStatus = "未启动"
 
     /**
@@ -50,8 +50,10 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
 
     /** 最近一次 msgExec 任务完成的时间戳（看门狗判断 worker 是否卡死） */
     @Volatile private var lastMsgTaskDone = System.currentTimeMillis()
+
     /** msgExec 任务排队数（未消费任务的粗略计数，用于看门狗触发判断） */
     private val pendingMsg = java.util.concurrent.atomic.AtomicInteger(0)
+
     /** 超过该时长没有任何任务完成 → 认为 worker 卡死，重建（正常 AI 有 90s 绝对超时，100s 足够放过慢但正常的任务） */
     private val msgStuckMs = 100_000L
 
@@ -63,8 +65,10 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
      */
     private val seenMsgIds = ConcurrentHashMap<String, Long>()
     private val seenMsgIdsCleanAt = java.util.concurrent.atomic.AtomicLong(0)
+
     /** 兜底：两个事件的 id 不一致时，同群同人同内容 1.5s 内只处理一次 */
     private val seenGroupContent = ConcurrentHashMap<String, Long>()
+
     /** 兜底 2：同一群同一人 300ms 内到达的第二条，一律视为网关重复投递（真人不可能这么快连发两条） */
     private val lastGroupMemberAt = ConcurrentHashMap<String, Long>()
 
@@ -115,10 +119,9 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
      * 同一会话（同群/同私聊）仍加锁串行，保证回复顺序不乱；跨会话并行，
      * 不会再出现“一个群里的 AI 调用把其它消息全堵在队尾”的积压。
      */
-    private fun newMsgWorker(): java.util.concurrent.ExecutorService =
-        Executors.newFixedThreadPool(4) { r ->
-            Thread(r, "msg-worker").apply { isDaemon = true }
-        }
+    private fun newMsgWorker(): java.util.concurrent.ExecutorService = Executors.newFixedThreadPool(4) { r ->
+        Thread(r, "msg-worker").apply { isDaemon = true }
+    }
 
     private val convLocks = java.util.concurrent.ConcurrentHashMap<String, Any>()
 
@@ -130,7 +133,7 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
     /** 看门狗：若现有 msgExec 单线程 worker 卡死（太久没完成任务且有消息在等），重建一个，避免永久不回复 */
     private fun ensureMsgWorkerHealthy() {
         if (!running) return
-        if (pendingMsg.get() == 0) return      // 没有排队中的消息，无需干预
+        if (pendingMsg.get() == 0) return // 没有排队中的消息，无需干预
         if (System.currentTimeMillis() - lastMsgTaskDone < msgStuckMs) return
         synchronized(this) {
             if (!running) return
@@ -161,11 +164,13 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
 
     /** 最近活跃会话（kind, openid, sender）：主动消息发给最近聊过的人 */
     @Volatile private var lastConv: Triple<String, String, String>? = null
+
     /** 主动消息每日条数（凌晨重置） */
     @Volatile private var proactiveCount = 0
     private var proactiveDay = 0
 
     private val history = ConcurrentHashMap<String, ArrayDeque<ChatMsg>>()
+
     /** 最近一条消息事件（convKey -> 事件+时间戳）：后台异步任务（如生视频）完成后用它做被动回复，不占用主动消息额度 */
     private val lastEvent = ConcurrentHashMap<String, Pair<QqMessageEvent, Long>>()
     private val statusListeners = CopyOnWriteArrayList<StatusListener>()
@@ -193,9 +198,9 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
         memoryExec = Executors.newSingleThreadExecutor { r ->
             Thread(r, "memory-worker").apply { isDaemon = true }
         }
-        unhealthySince = 0L      // 每次启动给看门狗一个干净的计时窗口
-        wirePluginDelivery()     // 插件异步结果（生视频等）的投递通道
-        startWatchdog()          // 心跳看门狗（幂等：只在首次真正启动线程）
+        unhealthySince = 0L // 每次启动给看门狗一个干净的计时窗口
+        wirePluginDelivery() // 插件异步结果（生视频等）的投递通道
+        startWatchdog() // 心跳看门狗（幂等：只在首次真正启动线程）
         notifyStatus("正在启动...")
         Thread {
             runLoop()
@@ -269,7 +274,7 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
         val (ev, ts) = pair
         val ageMin = (System.currentTimeMillis() - ts) / 60000
         if (ageMin > 50) {
-            Logs.warn("[异步投递] 最近消息已过 ${ageMin} 分钟（msg_id 失效），不再发送：$text")
+            Logs.warn("[异步投递] 最近消息已过 $ageMin 分钟（msg_id 失效），不再发送：$text")
             return
         }
         if (!imageUrl.isNullOrBlank()) {
@@ -298,7 +303,7 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
         val (ev, ts) = pair
         val ageMin = (System.currentTimeMillis() - ts) / 60000
         if (ageMin > 50) {
-            Logs.warn("[异步投递] 最近消息已过 ${ageMin} 分钟（msg_id 失效），不再发送：$text")
+            Logs.warn("[异步投递] 最近消息已过 $ageMin 分钟（msg_id 失效），不再发送：$text")
             return
         }
         emitChat(ChatEntry("bot", text, System.currentTimeMillis(), sessionKey))
@@ -308,18 +313,24 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
     // ---------------- 心跳看门狗（整机级卡死自愈） ----------------
     /** 软恢复阈值：连接不健康持续该时长 → 重启机器人引擎（“重启机器人”） */
     private val softWatchdogMs = 5 * 60 * 1000L
+
     /** 硬恢复阈值：连接不健康持续该时长 → 重启整个应用（进程级），随后机器人自动拉起 */
     private val hardWatchdogMs = 15 * 60 * 1000L
+
     /** 软恢复冷却：两次软重启的最小间隔（避免刚重启又立刻再重启） */
     private val softCooldownMs = 3 * 60 * 1000L
+
     /** 硬恢复冷却：两次“重启应用”的最小间隔（防 crash-loop） */
     private val hardCooldownMs = 30 * 60 * 1000L
 
     @Volatile private var watchdogStarted = false
+
     /** 曾经连接成功过（READY/ACK 过）——只有“曾健康”才做升级重启，避免凭证错误时反复杀进程 */
     @Volatile private var wasEverHealthy = false
+
     /** 连接不健康开始的时刻（0=健康） */
     @Volatile private var unhealthySince = 0L
+
     @Volatile private var lastSoftRestart = 0L
 
     /** 启动心跳看门狗线程（幂等）。线程常驻，仅随 running 开关状态判断是否升级重启。 */
@@ -332,7 +343,7 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
         Thread {
             watchLoop@ while (true) {
                 try {
-                    Thread.sleep(60_000L)   // 心跳看门狗检查间隔：每 1 分钟查一次是否卡死
+                    Thread.sleep(60_000L) // 心跳看门狗检查间隔：每 1 分钟查一次是否卡死
                 } catch (_: InterruptedException) {
                     break
                 }
@@ -362,7 +373,7 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
                 if (dur >= softWatchdogMs && now - lastSoftRestart >= softCooldownMs) {
                     Logs.warn("心跳不健康已 ${dur / 60000} 分钟，正在重启机器人引擎…")
                     lastSoftRestart = now
-                    unhealthySince = now      // 给新引擎一个干净的计时窗口
+                    unhealthySince = now // 给新引擎一个干净的计时窗口
                     try {
                         restart()
                     } catch (e: Exception) {
@@ -386,29 +397,37 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
      *  再杀掉当前进程；新进程启动后 BotService（STICKY）+ Config.botEnabled=true 会自动把机器人拉起来。 */
     private fun triggerAppRelaunch() {
         try {
-            Config.botEnabled = true                       // 保证重启后机器人自动拉起
+            Config.botEnabled = true // 保证重启后机器人自动拉起
             Config.lastHardRestart = System.currentTimeMillis()
             val am = ctx.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
             val now = System.currentTimeMillis()
 
             val svc = android.content.Intent(ctx, com.astrbot.lite.service.BotService::class.java)
                 .setAction(com.astrbot.lite.service.BotService.ACTION_START)
-            val svcPi = android.app.PendingIntent.getService(ctx.applicationContext, 2001, svc,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+            val svcPi = android.app.PendingIntent.getService(
+                ctx.applicationContext,
+                2001,
+                svc,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+            )
             am.cancel(svcPi)
             am.set(android.app.AlarmManager.RTC_WAKEUP, now + 8000L, svcPi)
 
             val act = android.content.Intent(ctx, com.astrbot.lite.ui.InitActivity::class.java)
                 .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            val actPi = android.app.PendingIntent.getActivity(ctx.applicationContext, 2002, act,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+            val actPi = android.app.PendingIntent.getActivity(
+                ctx.applicationContext,
+                2002,
+                act,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+            )
             am.cancel(actPi)
             am.set(android.app.AlarmManager.RTC_WAKEUP, now + 9000L, actPi)
         } catch (e: Exception) {
             Logs.err("调度应用重启失败：${e.message}")
         }
         try {
-            Thread.sleep(1000L)      // 让 AlarmManager 完成调度再杀进程
+            Thread.sleep(1000L) // 让 AlarmManager 完成调度再杀进程
         } catch (_: InterruptedException) {
         }
         Process.killProcess(Process.myPid())
@@ -493,8 +512,11 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
                             return
                         }
                         client?.sendInteractionReply(
-                            ev.kind, ev.openid, ev.id,
-                            r.reply ?: "", r.buttons
+                            ev.kind,
+                            ev.openid,
+                            ev.id,
+                            r.reply ?: "",
+                            r.buttons,
                         )
                     } catch (e: Exception) {
                         Logs.warn("[按钮] 处理失败: ${e.message}")
@@ -545,7 +567,7 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
                         pendingMsg.decrementAndGet()
                     }
                 }
-            }
+            },
         )
         client?.start()
         // 主动消息循环：隔一段时间主动找对方聊天（分享梦/脑补/日常），像真人有自己的生活
@@ -576,26 +598,26 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
     /** 人格化回复引擎（1.0.55+ 新加，内置插件 personality，默认关闭）是否开启。
      *  含：去AI化/语言多样、心情(情绪)、做梦、脑补、群聊背景“现实世界→QQ群”。
      *  仅当插件存在且被启用才注入；否则回复走 1.0.54 的干净路径（人设+记忆+历史+当前消息）。 */
-    private fun personalityOn(): Boolean =
-        try {
-            PluginManager.installed("personality")?.enabled == true
-        } catch (_: Exception) {
-            false
-        }
+    private fun personalityOn(): Boolean = try {
+        PluginManager.installed("personality")?.enabled == true
+    } catch (_: Exception) {
+        false
+    }
 
     // ---------------- 人格化子功能配置读取 ----------------
     /** 读插件某配置项；缺失/异常返回默认值 */
-    private fun pcfg(key: String, def: String = ""): String =
-        try {
-            PluginManager.configMap("personality")[key]?.trim() ?: def
-        } catch (_: Exception) {
-            def
-        }
+    private fun pcfg(key: String, def: String = ""): String = try {
+        PluginManager.configMap("personality")[key]?.trim() ?: def
+    } catch (_: Exception) {
+        def
+    }
+
     /** 子功能开关（"1"/"0"，默认开） */
     private fun pflag(key: String, def: Boolean = true): Boolean {
         val v = pcfg(key, if (def) "1" else "0")
         return v == "1" || v == "true" || v == "开" || v == "开_"
     }
+
     /** 数值配置（解析失败回退默认） */
     private fun pnum(key: String, def: Int): Int {
         val v = pcfg(key, def.toString()).toIntOrNull()
@@ -604,25 +626,31 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
 
     /** 情绪子功能是否开（人格化总开关 + 情绪子开关） */
     private fun moodOn(): Boolean = personalityOn() && pflag("sub_enableMood", true)
+
     /** 做梦子功能是否开 */
     private fun dreamOn(): Boolean = personalityOn() && pflag("sub_enableDream", true)
+
     /** 脑补子功能是否开 */
     private fun imaginationOn(): Boolean = personalityOn() && pflag("sub_enableImagination", true)
+
     /** 去AI味子功能是否开 */
     private fun deaiOn(): Boolean = personalityOn() && pflag("sub_enableDeai", true)
+
     /** 现实世界人设子功能是否开 */
     private fun realityOn(): Boolean = personalityOn() && pflag("sub_enableReality", true)
+
     /** 群聊背景子功能是否开 */
     private fun groupCtxOn(): Boolean = personalityOn() && pflag("sub_enableGroupCtx", true)
+
     /** 主动消息子功能是否开（人格化总开关 + 主动子开关；proactiveOn() 仅判总开关） */
     private fun proactiveSubOn(): Boolean = personalityOn() && pflag("sub_enableProactive", true)
+
     /** 做梦间隔（小时） */
     private fun dreamMinHours(): Int = pnum("dreamMinHours", 6)
 
     /** 文本是否真的聊到「睡眠梦」：修复（1.7.179）——原 contains("梦") 会被“梦想”等词误触发，
      *  误标后当天不再聊梦；收紧为睡眠梦相关词组，宁可漏标不可误标 */
-    private fun talkedAboutDream(text: String): Boolean =
-        Regex("做梦|梦到|梦见|梦里|梦醒|噩梦|美梦|梦境|梦话|梦游").containsMatchIn(text)
+    private fun talkedAboutDream(text: String): Boolean = Regex("做梦|梦到|梦见|梦里|梦醒|噩梦|美梦|梦境|梦话|梦游").containsMatchIn(text)
 
     /** 情绪敏感度 1-10（越高越容易随对方情绪变化；默认 5） */
     private fun moodSensitivity(): Int = pnum("sub_moodReactivity", 5).coerceIn(1, 10)
@@ -637,8 +665,14 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
     private fun emitReceived(ev: QqMessageEvent) {
         val disp = senderDisplay(ev.sender, ev.kind)
         val label = if (ev.kind == "group") "[群] $disp" else "[私聊] $disp"
-        emitChat(ChatEntry("user", ev.content, System.currentTimeMillis(),
-            "${ev.kind}:${ev.openid}"))
+        emitChat(
+            ChatEntry(
+                "user",
+                ev.content,
+                System.currentTimeMillis(),
+                "${ev.kind}:${ev.openid}",
+            ),
+        )
         Logs.info("[收到] $label: ${ev.content.take(80)}")
         // 记录最近活跃会话：主动消息发给最近聊过的人（测试模式不记，免得主动消息发给测试用的假会话）
         if (!testMode) lastConv = Triple(ev.kind, ev.openid, disp)
@@ -652,13 +686,13 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
         val convKey = "${ev.kind}:${ev.openid}"
         // 记住最近一条消息：后台异步任务（生视频等）完成后用它做被动回复
         if (!testMode) {
-             val now = System.currentTimeMillis()
-             lastEvent.entries.removeAll { it.value.second < now - 3600_000 }
-             history.entries.removeAll { (_, hist) ->
-                 synchronized(hist) { hist.isEmpty() }
-             }
-             lastEvent[convKey] = ev to now
-         }
+            val now = System.currentTimeMillis()
+            lastEvent.entries.removeAll { it.value.second < now - 3600_000 }
+            history.entries.removeAll { (_, hist) ->
+                synchronized(hist) { hist.isEmpty() }
+            }
+            lastEvent[convKey] = ev to now
+        }
 
         if (rawEv.replyMsgId.isNotBlank() && !testMode) {
             val refUrls = try {
@@ -736,7 +770,9 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
             } catch (_: Exception) {
                 null
             }
-        } else null
+        } else {
+            null
+        }
 
         // 1. 被动触发插件（命令）
         val hit = PluginManager.handle(ev.content, convKey, ev)
@@ -860,8 +896,14 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
             Logs.warn("[发送] 回复内容为空（AI 返回空或剥离思考后为空），改为提示文案")
             cleaned = "（这次没想好怎么回…你再说一遍？）"
         }
-        emitChat(ChatEntry("bot", cleaned, System.currentTimeMillis(),
-            "${ev.kind}:${ev.openid}"))
+        emitChat(
+            ChatEntry(
+                "bot",
+                cleaned,
+                System.currentTimeMillis(),
+                "${ev.kind}:${ev.openid}",
+            ),
+        )
         emitTestReply(ev, cleaned)
         if (personalityOn() && talkedAboutDream(cleaned) && !BotState.dreamMentionedToday()) {
             BotState.markDreamMentionedToday()
@@ -892,20 +934,22 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
     private fun sendVoiceOrTest(ev: QqMessageEvent, audio: ByteArray) {
         if (testMode) {
             val f = TempMedia.save(audio, "mp3")
-            if (f != null) emitTestReply(ev, "🔊 voice://${f.absolutePath}")
-            else emitTestReply(ev, "🔊（语音已生成，但测试台暂存失败）")
+            if (f != null) {
+                emitTestReply(ev, "🔊 voice://${f.absolutePath}")
+            } else {
+                emitTestReply(ev, "🔊（语音已生成，但测试台暂存失败）")
+            }
             return
         }
         client?.sendVoice(ev.kind, ev.openid, audio)
     }
 
     /** TTS 语音回复插件是否开启 */
-    private fun ttsOn(): Boolean =
-        try {
-            PluginManager.installed("tts")?.enabled == true
-        } catch (_: Exception) {
-            false
-        }
+    private fun ttsOn(): Boolean = try {
+        PluginManager.installed("tts")?.enabled == true
+    } catch (_: Exception) {
+        false
+    }
 
     /** 记忆增强（异步）：画像提取与上下文总结的 AI 调用在独立线程执行，且绝不持 hist 锁跨 AI，不阻塞消息队列 */
     private fun doMemory(ev: QqMessageEvent, convKey: String) {
@@ -933,7 +977,7 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
     /** 主动给最近聊过的人发一条消息（1.0.58 新加；归入人格化插件，默认关）。
      *  实际是否发：主动消息子开关 + 触发概率（proactiveChance）共同决定。 */
     private fun sendProactive() {
-        if (!proactiveSubOn()) return   // 人格化总开关 + 主动子开关都开才走
+        if (!proactiveSubOn()) return // 人格化总开关 + 主动子开关都开才走
         // 触发概率：100=每次醒来都发；设低=随机跳过（模拟"有时想发有时不想"）
         val chance = pnum("proactiveChance", 100).coerceIn(0, 100)
         if (chance < 100 && kotlin.random.Random.nextInt(100) >= chance) return
@@ -942,7 +986,7 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
     private fun sendProactiveImpl() {
         val conv = lastConv ?: return
         val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-        if (hour >= 23 || hour < 6) return   // 深夜：睡觉，不发
+        if (hour >= 23 || hour < 6) return // 深夜：睡觉，不发
         val today = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
         if (today != proactiveDay) {
             proactiveDay = today
@@ -967,7 +1011,7 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
         }
         val msgs = mutableListOf<ChatMsg>()
         msgs.add(ChatMsg("system", personaSystem()))
-        msgs.add(ChatMsg("system", "你现在想主动给${sender ?: "对方"}发一条消息（不是等对方@你才回）。结合你的心情、当前生活状态${dreamPart}，发一条自然简短、有人味的话：可以是分享刚做的梦、脑补的画面、突然想起对方、日常碎碎念。不要解释“我在发消息”，也不要太肉麻太长，50字以内。"))
+        msgs.add(ChatMsg("system", "你现在想主动给${sender ?: "对方"}发一条消息（不是等对方@你才回）。结合你的心情、当前生活状态$dreamPart，发一条自然简短、有人味的话：可以是分享刚做的梦、脑补的画面、突然想起对方、日常碎碎念。不要解释“我在发消息”，也不要太肉麻太长，50字以内。"))
         msgs.add(ChatMsg("user", "给对方发一条主动消息吧"))
         val reply = try {
             AiPool.chatFor("proactive", msgs)
@@ -985,10 +1029,13 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
 
     /** 做梦：AI 生成一个简短、有点荒诞又生活化的梦 */
     private fun makeDream(): String? = try {
-        AiPool.chatFor("dream", listOf(
-            ChatMsg("system", "你是梦境生成器。生成一个简短（一两句话）的梦，要有点荒诞又有生活感，比如“梦见我们在一个会飞的公交车上吃西瓜”。不要解释，只输出梦的内容。"),
-            ChatMsg("user", "帮我编一个梦")
-        ))
+        AiPool.chatFor(
+            "dream",
+            listOf(
+                ChatMsg("system", "你是梦境生成器。生成一个简短（一两句话）的梦，要有点荒诞又有生活感，比如“梦见我们在一个会飞的公交车上吃西瓜”。不要解释，只输出梦的内容。"),
+                ChatMsg("user", "帮我编一个梦"),
+            ),
+        )
     } catch (e: Exception) {
         Logs.warn("生成梦境失败：${e.message}")
         null
@@ -1110,7 +1157,8 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
                         reply
                     }
                 } catch (e: Exception) {
-                    Logs.warn("[技能] ${skill.name} 调用失败：${e.message}"); reply
+                    Logs.warn("[技能] ${skill.name} 调用失败：${e.message}")
+                    reply
                 }
                 Logs.debug("[技能] 改写后(最终): ${rewritten.take(300)}")
                 if (rewritten != reply) {
@@ -1147,8 +1195,7 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
     }
 
     /** 把换行和连续空白压成一个空格（AI 完整回复用；插件固定回复不要调用） */
-    private fun mergeWhitespace(text: String): String =
-        text.replace(Regex("[\\s\u3000]+"), " ").trim()
+    private fun mergeWhitespace(text: String): String = text.replace(Regex("[\\s\u3000]+"), " ").trim()
 
     /** 识别模型回复末尾的“调用技能：/技能名 参数” */
     private fun parseSkillInvocation(reply: String): Pair<String, String>? {
@@ -1178,10 +1225,11 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
         val sb = StringBuilder()
         // 身份段
         sb.append(
-            if (realityOn())
+            if (realityOn()) {
                 "你是个真人，在QQ上跟朋友闲聊。你有自己的日子要过，会困会饿、要上班、会追剧，不是AI，也从不提AI/助手/模型。\n"
-            else
+            } else {
                 "你是个有自己生活的QQ群友，在跟朋友闲聊。\n"
+            },
         )
         // 当下状态（人格化最有价值的部分，保留）
         sb.append("现在是").append(timeDesc).append("，你").append(BotState.lifeState)
@@ -1189,8 +1237,11 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
         sb.append("。\n")
         if (dreamOn()) {
             sb.append(
-                if (BotState.dreamMentionedToday()) "（梦今天聊过了，别再提）\n"
-                else "（你最近梦到：${BotState.dreamDesc()}；除非正好聊到，不然不用提，提也就一次）\n"
+                if (BotState.dreamMentionedToday()) {
+                    "（梦今天聊过了，别再提）\n"
+                } else {
+                    "（你最近梦到：${BotState.dreamDesc()}；除非正好聊到，不然不用提，提也就一次）\n"
+                },
             )
         }
         if (imaginationOn()) sb.append("对方说话时你常顺带想到些具体画面，想说就随口带一句，别硬凑。\n")
@@ -1212,7 +1263,7 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
         convKey: String,
         profile: UserProfile?,
         extraSystem: String?,
-        thought: String? = null
+        thought: String? = null,
     ): List<ChatMsg> {
         val msgs = mutableListOf<ChatMsg>()
         msgs.add(ChatMsg("system", persona.prompt))
@@ -1385,7 +1436,11 @@ class BotEngine(private val ctx: Context, private val accountId: String = "") {
     private fun thinkNow(ev: QqMessageEvent, uid: String) {
         try {
             if (Config.thoughtEnabled) {
-                val profile = try { MemoryStore.load(uid) } catch (_: Exception) { null }
+                val profile = try {
+                    MemoryStore.load(uid)
+                } catch (_: Exception) {
+                    null
+                }
                 val thought = ThoughtEngine.think(ev, ev.content, profile)
                 if (thought != null && testMode) {
                     val convKey = "${ev.kind}:${ev.openid}"

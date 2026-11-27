@@ -1,9 +1,7 @@
 package com.astrbot.lite.core
 
 import com.astrbot.lite.ui.PluginWebUiBridge
-import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
 import java.io.OutputStream
 import java.net.InetAddress
 import java.net.ServerSocket
@@ -123,23 +121,35 @@ object LocalWebServer {
                             if (n == 1 || n % 20 == 0) {
                                 Logs.warn("[本地服务] 并发已满，拒绝新请求（累计 $n）。页面可能卡在慢接口上")
                             }
-                            try { sock.close() } catch (_: Exception) {}
+                            try {
+                                sock.close()
+                            } catch (_: Exception) {}
                             continue
                         }
                         try {
                             pool.execute {
-                                try { handle(sock) } finally { inFlight.release() }
+                                try {
+                                    handle(sock)
+                                } finally {
+                                    inFlight.release()
+                                }
                             }
                         } catch (e: Exception) {
                             inFlight.release()
-                            try { sock.close() } catch (_: Exception) {}
+                            try {
+                                sock.close()
+                            } catch (_: Exception) {}
                             Logs.warn("[本地服务] 提交任务失败: ${e.message}")
                         }
                     } catch (t: Throwable) {
                         // 1.7.207：旧版只 catch Exception，Error 会让 accept 线程静默死亡
                         if (ss.isClosed) break
                         Logs.err("[本地服务] accept 异常（继续监听）: ${t.javaClass.simpleName} ${t.message}")
-                        try { Thread.sleep(200) } catch (_: InterruptedException) { break }
+                        try {
+                            Thread.sleep(200)
+                        } catch (_: InterruptedException) {
+                            break
+                        }
                     }
                 }
                 Logs.warn("[本地服务] accept 循环退出（端口 $p）")
@@ -187,8 +197,8 @@ object LocalWebServer {
         val th = acceptThread
         if (ss == null || ss.isClosed || (th != null && th.isAlive)) return
         Logs.err("[本地服务] 检测到 accept 线程已死，正在重建监听")
-        stop()              // 内部 @Synchronized，会拿到锁后释放
-        ensureStarted()     // 内部 @Synchronized，重新 bind + 起 accept + 复用已启动看门狗
+        stop() // 内部 @Synchronized，会拿到锁后释放
+        ensureStarted() // 内部 @Synchronized，重新 bind + 起 accept + 复用已启动看门狗
     }
 
     @Synchronized
@@ -229,9 +239,15 @@ object LocalWebServer {
                 if (headBytes.size() > 64 * 1024) break
             }
             val headerText = headBytes.toString("UTF-8")
-            if (headerText.isEmpty()) { sock.close(); return }
+            if (headerText.isEmpty()) {
+                sock.close()
+                return
+            }
             val lines = headerText.split("\r\n")
-            val requestLine = lines.firstOrNull() ?: run { sock.close(); return }
+            val requestLine = lines.firstOrNull() ?: run {
+                sock.close()
+                return
+            }
             var contentLength = 0
             for (i in 1 until lines.size) {
                 val line = lines[i]
@@ -240,7 +256,10 @@ object LocalWebServer {
                 }
             }
             val parts = requestLine.split(" ")
-            if (parts.size < 2) { sock.close(); return }
+            if (parts.size < 2) {
+                sock.close()
+                return
+            }
             val method = parts[0].uppercase()
             val rawPath = parts[1]
             // 精确读 body 字节（不经字符缓冲）
@@ -253,7 +272,9 @@ object LocalWebServer {
                     off += n
                 }
                 buf
-            } else ByteArray(0)
+            } else {
+                ByteArray(0)
+            }
 
             val path = rawPath.substringBefore("?")
             val query = rawPath.substringAfter("?", "")
@@ -270,8 +291,9 @@ object LocalWebServer {
                 // babel-standalone（1.7.98 转译加载器按需拉取；1.7.101 no-store——旧 Babel6 曾被磁盘缓存命中）
                 path == "/_runtime/babel.min.js" -> {
                     val b = babelBytes
-                    if (b == null) writeText(out, "text/plain", "babel not loaded")
-                    else {
+                    if (b == null) {
+                        writeText(out, "text/plain", "babel not loaded")
+                    } else {
                         out.write("HTTP/1.1 200 OK\r\nContent-Type: application/javascript; charset=utf-8\r\nContent-Length: ${b.size}\r\nCache-Control: no-store, no-cache, must-revalidate\r\nConnection: close\r\n\r\n".toByteArray())
                         out.write(b)
                     }
@@ -289,7 +311,9 @@ object LocalWebServer {
                 Logs.warn("[本地服务] 请求处理失败: $tag")
             }
         } finally {
-            try { sock.close() } catch (_: Exception) {}
+            try {
+                sock.close()
+            } catch (_: Exception) {}
         }
     }
 
@@ -305,13 +329,17 @@ object LocalWebServer {
             writeJson(out, """{"ok":"false","error":"缺少 pid 或 endpoint"}""")
             return
         }
-        val bodyStr = try { String(body, Charsets.UTF_8) } catch (_: Exception) { "" }
+        val bodyStr = try {
+            String(body, Charsets.UTF_8)
+        } catch (_: Exception) {
+            ""
+        }
         val raw = PythonRuntime.callWebApi(
             pluginIds = listOf(pid),
             method = method,
             path = "/" + pid + "/" + endpoint,
             queryJson = queryToJson(query),
-            bodyJson = bodyStr
+            bodyJson = bodyStr,
         )
         // 垫片响应里可能带 config 写回字段——callWebApi 内部已剥离并持久化，这里原样透传
         writeJson(out, raw)
@@ -359,8 +387,11 @@ object LocalWebServer {
         }
         if (root == null) {
             Logs.warn("[本地服务] 静态未命中 pid=$pid rel=$rel roots=${roots.keys} last=$lastPid path=$path")
-            writeText(out, "text/plain; charset=utf-8",
-                "Not Found (plugin root)：无法解析插件目录 pid=$pid。请从 App 内插件页的「Web」入口打开。")
+            writeText(
+                out,
+                "text/plain; charset=utf-8",
+                "Not Found (plugin root)：无法解析插件目录 pid=$pid。请从 App 内插件页的「Web」入口打开。",
+            )
             return
         }
         val relFinal = if (rel.endsWith("/")) rel + "index.html" else rel

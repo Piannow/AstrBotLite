@@ -25,14 +25,12 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import com.astrbot.lite.R
-import com.astrbot.lite.core.Account
 import com.astrbot.lite.core.AccountManager
 import com.astrbot.lite.core.AstrBotMarketEntry
 import com.astrbot.lite.core.BotEngine
 import com.astrbot.lite.core.Config
 import com.astrbot.lite.core.InstallProgress
 import com.astrbot.lite.core.KnowledgeBase
-import com.astrbot.lite.core.KnowledgeEntry
 import com.astrbot.lite.core.Logs
 import com.astrbot.lite.core.Netdisk
 import com.astrbot.lite.core.PersonaManager
@@ -59,7 +57,7 @@ import java.util.Locale
 class PluginTab(private val act: Activity) : LinearLayout(act) {
 
     private val handler = Handler(Looper.getMainLooper())
-    private val IMPORT_PICK = 3002
+    private val reqImportPick = 3002
 
     var onAccountChanged: (() -> Unit)? = null
 
@@ -123,7 +121,7 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
     private val netdiskPlatforms: MutableList<NetdiskPlatform> = mutableListOf(
         NetdiskPlatform("123网盘", "123"),
         NetdiskPlatform("夸克网盘", "quark"),
-        NetdiskPlatform("UC网盘", "uc")
+        NetdiskPlatform("UC网盘", "uc"),
     )
 
     private data class NetdiskPlatform(val name: String, val id: String)
@@ -137,15 +135,22 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             orientation = HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
         }
-        addView(topRow, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
-        topRow.addView(TextView(context).apply {
-            text = "插件"
-            textSize = 18f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setTextColor(color(R.color.textMain))
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        addView(
+            topRow,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        topRow.addView(
+            TextView(context).apply {
+                text = "插件"
+                textSize = 18f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(color(R.color.textMain))
+            },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+        )
         tvAccountTag = TextView(context).apply {
             textSize = 12f
             setTextColor(color(R.color.colorPrimary))
@@ -158,22 +163,36 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             orientation = HORIZONTAL
             setPadding(0, dp(12), 0, 0)
         }
-        addView(mainRow, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        addView(
+            mainRow,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
         val leftCol = LinearLayout(context).apply { orientation = VERTICAL }
-        mainRow.addView(leftCol, LinearLayout.LayoutParams(
-            0, ViewGroup.LayoutParams.MATCH_PARENT, 1f
-        ))
+        mainRow.addView(
+            leftCol,
+            LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                1f,
+            ),
+        )
         buildInstalledSection(leftCol)
 
         accountCardHost = LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(dp(8), 0, 0, 0)
         }
-        mainRow.addView(accountCardHost!!, LinearLayout.LayoutParams(
-            dp(180), ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
+        mainRow.addView(
+            accountCardHost!!,
+            LinearLayout.LayoutParams(
+                dp(180),
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
         refreshAccountCard()
 
         // 子 Tab
@@ -193,18 +212,35 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
         paneAstr = buildAstrPane()
         paneTools = buildToolsPane()
         val paneWrap = LinearLayout(context).apply { orientation = VERTICAL }
-        addView(paneWrap, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.5f
-        ))
-        paneWrap.addView(paneLite!!, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
-        ))
-        paneWrap.addView(paneAstr!!, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
-        ))
-        paneWrap.addView(paneTools!!, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
-        ))
+        addView(
+            paneWrap,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1.5f,
+            ),
+        )
+        paneWrap.addView(
+            paneLite!!,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        paneWrap.addView(
+            paneAstr!!,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        paneWrap.addView(
+            paneTools!!,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
 
         refreshLite()
         refreshAstr()
@@ -224,16 +260,23 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
                 cornerRadius = 12 * resources.displayMetrics.density
             }
         }
-        parent.addView(card, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
-        card.addView(TextView(context).apply {
-            text = "已安装插件"
-            textSize = 14f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setTextColor(color(R.color.textMain))
-            setPadding(0, 0, 0, dp(6))
-        })
+        parent.addView(
+            card,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
+        card.addView(
+            TextView(context).apply {
+                text = "已安装插件"
+                textSize = 14f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(color(R.color.textMain))
+                setPadding(0, 0, 0, dp(6))
+            },
+        )
 
         installedAdapter = InstalledAdapter()
         lvInstalled = ListView(context).apply {
@@ -256,18 +299,27 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
                 }
             }
         }
-        card.addView(lvInstalled, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        card.addView(
+            lvInstalled,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
 
         val batch = LinearLayout(context).apply {
             orientation = HORIZONTAL
             setPadding(0, dp(6), 0, 0)
             gravity = android.view.Gravity.CENTER_VERTICAL
         }
-        parent.addView(batch, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
+        parent.addView(
+            batch,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
         tvSelInfo = TextView(context).apply {
             text = "已选 0 项"
             textSize = 12f
@@ -282,19 +334,22 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
         btnCancelSel = mkBtn("取消") { exitSelectMode() }
         btnMulti = mkBtn("多选") { enterSelectMode() }
         for (b in listOf(btnAll!!, btnDel!!, btnMove!!, btnCopy!!, btnCancelSel!!, btnMulti!!)) {
-            batch.addView(b, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { marginStart = dp(4) })
+            batch.addView(
+                b,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply { marginStart = dp(4) },
+            )
         }
         updateBatchBar()
     }
 
-    private fun mkBtn(label: String, onclick: () -> Unit): Button =
-        Button(context).apply {
-            text = label
-            textSize = 11f
-            setOnClickListener { onclick() }
-        }
+    private fun mkBtn(label: String, onclick: () -> Unit): Button = Button(context).apply {
+        text = label
+        textSize = 11f
+        setOnClickListener { onclick() }
+    }
 
     private fun enterSelectMode() {
         selecting = true
@@ -380,10 +435,12 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
         if (position < 0 || position >= installed.size) return
         val p = installed[position]
         val actions = mutableListOf<Pair<String, () -> Unit>>()
-        actions.add((if (p.enabled) "停用" else "启用") to {
-            PluginManager.setEnabled(p.id, !p.enabled)
-            refresh()
-        })
+        actions.add(
+            (if (p.enabled) "停用" else "启用") to {
+                PluginManager.setEnabled(p.id, !p.enabled)
+                refresh()
+            },
+        )
         actions.add("配置" to { showConfigDialog(p) })
         if (PythonRuntime.pythonPluginWebRoot(p.id) != null) {
             actions.add("Web 界面" to { PluginWebUiActivity.openWebUi(act, p.id, p.name) })
@@ -427,9 +484,14 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             max = 100
         }
         layout.addView(tvPct)
-        layout.addView(bar, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        layout.addView(
+            bar,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
         val dlg = AlertDialog.Builder(context)
             .setTitle("正在卸载")
             .setView(layout)
@@ -476,16 +538,22 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             DpadFocus.highlightGroup(this)
             stateListAnimator = null
         }
-        host.addView(card, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
-        card.addView(TextView(context).apply {
-            text = acc?.name ?: "未配置账号"
-            textSize = 15f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setTextColor(color(R.color.textMain))
-            setPadding(0, 0, 0, dp(6))
-        })
+        host.addView(
+            card,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        card.addView(
+            TextView(context).apply {
+                text = acc?.name ?: "未配置账号"
+                textSize = 15f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(color(R.color.textMain))
+                setPadding(0, 0, 0, dp(6))
+            },
+        )
         if (acc != null) {
             val online = try {
                 BotService.engines()[acc.id]?.isRunning == true
@@ -502,12 +570,14 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             card.addView(kvRow("人设卡", persona))
             card.addView(kvRow("插件数", installed.size.toString()))
         }
-        card.addView(TextView(context).apply {
-            text = "点击管理账号"
-            textSize = 10f
-            setTextColor(color(R.color.textSub))
-            setPadding(0, dp(6), 0, 0)
-        })
+        card.addView(
+            TextView(context).apply {
+                text = "点击管理账号"
+                textSize = 10f
+                setTextColor(color(R.color.textSub))
+                setPadding(0, dp(6), 0, 0)
+            },
+        )
         post { DpadFocus.apply(card) }
     }
 
@@ -516,17 +586,21 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             orientation = HORIZONTAL
             setPadding(0, dp(2), 0, dp(2))
         }
-        row.addView(TextView(context).apply {
-            text = k
-            textSize = 10f
-            setTextColor(color(R.color.textSub))
-            width = dp(50)
-        })
-        row.addView(TextView(context).apply {
-            text = v
-            textSize = 12f
-            setTextColor(color(R.color.textMain))
-        })
+        row.addView(
+            TextView(context).apply {
+                text = k
+                textSize = 10f
+                setTextColor(color(R.color.textSub))
+                width = dp(50)
+            },
+        )
+        row.addView(
+            TextView(context).apply {
+                text = v
+                textSize = 12f
+                setTextColor(color(R.color.textMain))
+            },
+        )
         return row
     }
 
@@ -536,22 +610,28 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             gravity = android.view.Gravity.CENTER_VERTICAL
             setPadding(0, dp(2), 0, dp(2))
         }
-        row.addView(TextView(context).apply {
-            text = k
-            textSize = 10f
-            setTextColor(color(R.color.textSub))
-            width = dp(50)
-        })
-        row.addView(TextView(context).apply {
-            text = "\u25CF"
-            textSize = 10f
-            setTextColor(color(if (online) R.color.ok else R.color.err))
-        })
-        row.addView(TextView(context).apply {
-            text = if (online) " 在线" else " 离线"
-            textSize = 12f
-            setTextColor(color(R.color.textMain))
-        })
+        row.addView(
+            TextView(context).apply {
+                text = k
+                textSize = 10f
+                setTextColor(color(R.color.textSub))
+                width = dp(50)
+            },
+        )
+        row.addView(
+            TextView(context).apply {
+                text = "\u25CF"
+                textSize = 10f
+                setTextColor(color(if (online) R.color.ok else R.color.err))
+            },
+        )
+        row.addView(
+            TextView(context).apply {
+                text = if (online) " 在线" else " 离线"
+                textSize = 12f
+                setTextColor(color(R.color.textMain))
+            },
+        )
         return row
     }
 
@@ -566,33 +646,39 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             false
         }
         val items = mutableListOf<Pair<String, () -> Unit>>()
-        items.add((if (online) "停止" else "启动") to {
-            try {
-                BotService.startAccount(act, acc.id, !online)
-            } catch (_: Throwable) {
-            }
-            Toast.makeText(context, acc.name + (if (online) " 已停止" else " 已启动"), Toast.LENGTH_SHORT).show()
-            handler.postDelayed({ refreshAccountCard() }, 500)
-        })
-        items.add("重启" to {
-            val eng: BotEngine? = try {
-                BotService.engines()[acc.id]
-            } catch (_: Throwable) {
-                null
-            }
-            if (eng != null) {
-                Toast.makeText(context, acc.name + " 正在重启…", Toast.LENGTH_SHORT).show()
-                eng.restart()
-                handler.postDelayed({ refreshAccountCard() }, 1000)
-            } else {
-                Toast.makeText(context, acc.name + " 未在运行", Toast.LENGTH_SHORT).show()
-            }
-        })
-        items.add("设置账号（QQ 接入 + AI 配置）" to {
-            val i = Intent(act, WizardActivity::class.java)
-            i.putExtra("account_id", acc.id)
-            act.startActivity(i)
-        })
+        items.add(
+            (if (online) "停止" else "启动") to {
+                try {
+                    BotService.startAccount(act, acc.id, !online)
+                } catch (_: Throwable) {
+                }
+                Toast.makeText(context, acc.name + (if (online) " 已停止" else " 已启动"), Toast.LENGTH_SHORT).show()
+                handler.postDelayed({ refreshAccountCard() }, 500)
+            },
+        )
+        items.add(
+            "重启" to {
+                val eng: BotEngine? = try {
+                    BotService.engines()[acc.id]
+                } catch (_: Throwable) {
+                    null
+                }
+                if (eng != null) {
+                    Toast.makeText(context, acc.name + " 正在重启…", Toast.LENGTH_SHORT).show()
+                    eng.restart()
+                    handler.postDelayed({ refreshAccountCard() }, 1000)
+                } else {
+                    Toast.makeText(context, acc.name + " 未在运行", Toast.LENGTH_SHORT).show()
+                }
+            },
+        )
+        items.add(
+            "设置账号（QQ 接入 + AI 配置）" to {
+                val i = Intent(act, WizardActivity::class.java)
+                i.putExtra("account_id", acc.id)
+                act.startActivity(i)
+            },
+        )
         showActionSheetSimple(acc.name, items)
     }
 
@@ -616,9 +702,13 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
                 }
             }
             buttons.add(b)
-            v.addView(b, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = dp(6) })
+            v.addView(
+                b,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply { bottomMargin = dp(6) },
+            )
         }
         val cancel = Button(context).apply {
             text = "取消"
@@ -629,9 +719,13 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             setOnClickListener { dlg.dismiss() }
         }
         buttons.add(cancel)
-        v.addView(cancel, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
+        v.addView(
+            cancel,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
         dlg.setOnShowListener { buttons.firstOrNull()?.requestFocus() }
         dlg.show()
     }
@@ -644,16 +738,15 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
 
     // ---------------- 子 Tab ----------------
 
-    private fun makeSubTab(label: String, idx: Int): TextView =
-        TextView(context).apply {
-            text = label
-            textSize = 13f
-            gravity = android.view.Gravity.CENTER
-            setPadding(0, dp(8), 0, dp(8))
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { switchScreen(idx) }
-        }
+    private fun makeSubTab(label: String, idx: Int): TextView = TextView(context).apply {
+        text = label
+        textSize = 13f
+        gravity = android.view.Gravity.CENTER
+        setPadding(0, dp(8), 0, dp(8))
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { switchScreen(idx) }
+    }
 
     fun switchScreen(idx: Int) {
         currentScreen = idx
@@ -697,30 +790,38 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             orientation = VERTICAL
             setPadding(0, dp(8), 0, 0)
         }
-        p.addView(EditText(context).apply {
-            hint = "搜索 Lite 插件"
-            inputType = 1
-            maxLines = 1
-            setTextSize(12f)
-            addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun afterTextChanged(s: Editable?) {
-                    liteQuery = s?.toString()?.trim().orEmpty()
-                    litePageNum = 1
-                    showLitePage()
-                }
-            })
-        }, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
-        p.addView(Button(context).apply {
-            text = "刷新"
-            textSize = 12f
-            setOnClickListener { refreshLite() }
-        }, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(4) })
+        p.addView(
+            EditText(context).apply {
+                hint = "搜索 Lite 插件"
+                inputType = 1
+                maxLines = 1
+                setTextSize(12f)
+                addTextChangedListener(object : TextWatcher {
+                    override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                    override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                    override fun afterTextChanged(s: Editable?) {
+                        liteQuery = s?.toString()?.trim().orEmpty()
+                        litePageNum = 1
+                        showLitePage()
+                    }
+                })
+            },
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        p.addView(
+            Button(context).apply {
+                text = "刷新"
+                textSize = 12f
+                setOnClickListener { refreshLite() }
+            },
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(4) },
+        )
 
         liteAdapter = LiteMarketAdapter()
         lvLite = ListView(context).apply {
@@ -735,10 +836,12 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
                     view: android.widget.AbsListView?,
                     firstVisible: Int,
                     visibleCount: Int,
-                    totalCount: Int
+                    totalCount: Int,
                 ) {
-                    if (totalCount > 0 && firstVisible + visibleCount >= totalCount - 3 &&
-                        !loadingMoreLite && litePage.size < liteTotal
+                    if (totalCount > 0 &&
+                        firstVisible + visibleCount >= totalCount - 3 &&
+                        !loadingMoreLite &&
+                        litePage.size < liteTotal
                     ) {
                         loadingMoreLite = true
                         litePageNum++
@@ -747,9 +850,14 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
                 }
             })
         }
-        p.addView(lvLite, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        p.addView(
+            lvLite,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
         return p
     }
 
@@ -758,28 +866,36 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             orientation = VERTICAL
             setPadding(0, dp(8), 0, 0)
         }
-        p.addView(EditText(context).apply {
-            hint = "搜索 AstrBot 插件"
-            inputType = 1
-            maxLines = 1
-            setTextSize(12f)
-            addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun afterTextChanged(s: Editable?) {
-                    abQuery = s?.toString()?.trim().orEmpty()
-                    abPageNum = 1
-                    showAstrPage()
-                }
-            })
-        }, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
+        p.addView(
+            EditText(context).apply {
+                hint = "搜索 AstrBot 插件"
+                inputType = 1
+                maxLines = 1
+                setTextSize(12f)
+                addTextChangedListener(object : TextWatcher {
+                    override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                    override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                    override fun afterTextChanged(s: Editable?) {
+                        abQuery = s?.toString()?.trim().orEmpty()
+                        abPageNum = 1
+                        showAstrPage()
+                    }
+                })
+            },
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
 
         val abUrlRow = LinearLayout(context).apply { orientation = HORIZONTAL }
-        p.addView(abUrlRow, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(4) })
+        p.addView(
+            abUrlRow,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(4) },
+        )
         etAbUrl = EditText(context).apply {
             hint = "AstrBot 市场地址"
             setText(PluginConverter.DEFAULT_MARKET_URL)
@@ -787,16 +903,25 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             maxLines = 1
             setTextSize(11f)
         }
-        abUrlRow.addView(etAbUrl, LinearLayout.LayoutParams(
-            0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f
-        ))
-        abUrlRow.addView(Button(context).apply {
-            text = "加载"
-            textSize = 11f
-            setOnClickListener { refreshAstr() }
-        }, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
+        abUrlRow.addView(
+            etAbUrl,
+            LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f,
+            ),
+        )
+        abUrlRow.addView(
+            Button(context).apply {
+                text = "加载"
+                textSize = 11f
+                setOnClickListener { refreshAstr() }
+            },
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
 
         abAdapter = AstrMarketAdapter()
         lvAstr = ListView(context).apply {
@@ -811,10 +936,12 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
                     view: android.widget.AbsListView?,
                     firstVisible: Int,
                     visibleCount: Int,
-                    totalCount: Int
+                    totalCount: Int,
                 ) {
-                    if (totalCount > 0 && firstVisible + visibleCount >= totalCount - 3 &&
-                        !loadingMoreAstr && abPage.size < abTotal
+                    if (totalCount > 0 &&
+                        firstVisible + visibleCount >= totalCount - 3 &&
+                        !loadingMoreAstr &&
+                        abPage.size < abTotal
                     ) {
                         loadingMoreAstr = true
                         abPageNum++
@@ -823,9 +950,14 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
                 }
             })
         }
-        p.addView(lvAstr, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        p.addView(
+            lvAstr,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
         return p
     }
 
@@ -835,9 +967,13 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             setPadding(0, dp(8), 0, 0)
         }
         val grid = LinearLayout(context).apply { orientation = HORIZONTAL }
-        p.addView(grid, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
+        p.addView(
+            grid,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
         toolBtn(grid, "ZIP安装") { importLocal() }
         toolBtn(grid, "GitHub") { githubInstallDialog() }
         toolBtn(grid, "知识库") { openKnowledgeBase() }
@@ -854,10 +990,13 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             DpadFocus.highlight(this)
             stateListAnimator = null
         }
-        grid.addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-            marginStart = dp(2)
-            marginEnd = dp(2)
-        })
+        grid.addView(
+            b,
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(2)
+                marginEnd = dp(2)
+            },
+        )
     }
 
     private fun openKnowledgeBase() {
@@ -955,10 +1094,14 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
     }
 
     private fun showLitePage() {
-        val list = if (liteQuery.isEmpty()) liteAll else liteAll.filter {
-            it.name.contains(liteQuery, ignoreCase = true) ||
-                it.author.contains(liteQuery, ignoreCase = true) ||
-                it.description.contains(liteQuery, ignoreCase = true)
+        val list = if (liteQuery.isEmpty()) {
+            liteAll
+        } else {
+            liteAll.filter {
+                it.name.contains(liteQuery, ignoreCase = true) ||
+                    it.author.contains(liteQuery, ignoreCase = true) ||
+                    it.description.contains(liteQuery, ignoreCase = true)
+            }
         }
         liteTotal = list.size
         litePage = list.take(minOf(litePageNum * litePageSize, list.size))
@@ -967,11 +1110,15 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
     }
 
     private fun showAstrPage() {
-        val list = if (abQuery.isEmpty()) abAll else abAll.filter {
-            it.name.contains(abQuery, ignoreCase = true) ||
-                it.shownName.contains(abQuery, ignoreCase = true) ||
-                it.author.contains(abQuery, ignoreCase = true) ||
-                it.desc.contains(abQuery, ignoreCase = true)
+        val list = if (abQuery.isEmpty()) {
+            abAll
+        } else {
+            abAll.filter {
+                it.name.contains(abQuery, ignoreCase = true) ||
+                    it.shownName.contains(abQuery, ignoreCase = true) ||
+                    it.author.contains(abQuery, ignoreCase = true) ||
+                    it.desc.contains(abQuery, ignoreCase = true)
+            }
         }
         abTotal = list.size
         abPage = list.take(minOf(abPageNum * abPageSize, list.size))
@@ -1047,7 +1194,7 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             Toast.makeText(
                 context,
                 if (ok) "安装成功（已装入 Python 统一环境）" else "${e.shownName} 安装失败，详见日志",
-                Toast.LENGTH_LONG
+                Toast.LENGTH_LONG,
             ).show()
         }
     }
@@ -1068,18 +1215,26 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
                 }
             }
             buttons.add(b)
-            v.addView(b, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = dp(6) })
+            v.addView(
+                b,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply { bottomMargin = dp(6) },
+            )
         }
         val close = Button(context).apply {
             text = "关闭"
             setOnClickListener { }
         }
         buttons.add(close)
-        v.addView(close, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = dp(6) })
+        v.addView(
+            close,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(6) },
+        )
         dlg.setOnShowListener {
             buttons.forEach {
                 it.isFocusable = true
@@ -1119,8 +1274,9 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
         col.addView(etSecret)
         val envSpinner = Spinner(context).apply {
             adapter = ArrayAdapter(
-                context, android.R.layout.simple_spinner_item,
-                arrayOf("正式 (prod)", "沙箱 (sandbox)")
+                context,
+                android.R.layout.simple_spinner_item,
+                arrayOf("正式 (prod)", "沙箱 (sandbox)"),
             )
             isFocusable = true
         }
@@ -1176,12 +1332,14 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             setPadding(dp(16), dp(8), dp(16), dp(16))
         }
         for (f: PluginConfigField in p.config) {
-            inner.addView(TextView(context).apply {
-                text = f.label + "（" + f.key + "）"
-                textSize = 13f
-                setTextColor(color(R.color.textMain))
-                setPadding(0, dp(6), 0, dp(2))
-            })
+            inner.addView(
+                TextView(context).apply {
+                    text = f.label + "（" + f.key + "）"
+                    textSize = 13f
+                    setTextColor(color(R.color.textMain))
+                    setPadding(0, dp(6), 0, dp(2))
+                },
+            )
             val et = EditText(context).apply {
                 hint = f.value
                 maxLines = if (f.multiLine) 4 else 1
@@ -1232,7 +1390,7 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             .setTitle("触发方式")
             .setSingleChoiceItems(
                 labels.toTypedArray(),
-                maxOf(keys.indexOf(p.trigger), 0)
+                maxOf(keys.indexOf(p.trigger), 0),
             ) { d, which ->
                 PluginManager.setTrigger(p.id, keys[which])
                 d.dismiss()
@@ -1322,11 +1480,11 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
         }
-        act.startActivityForResult(i, IMPORT_PICK)
+        act.startActivityForResult(i, reqImportPick)
     }
 
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-        if (requestCode != IMPORT_PICK || resultCode != Activity.RESULT_OK) return false
+        if (requestCode != reqImportPick || resultCode != Activity.RESULT_OK) return false
         val uri: Uri = data?.data ?: return false
         startInstallTask("import:local", "导入插件", {
             act.contentResolver.openInputStream(uri)?.use { it.readBytes() }
@@ -1362,19 +1520,19 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
                                     InstallProgress.updateFor(
                                         taskId,
                                         "下载插件包 ${done / 1024}/${total / 1024} KB",
-                                        ((45L * done) / total).toInt().coerceIn(0, 45)
+                                        ((45L * done) / total).toInt().coerceIn(0, 45),
                                     )
                                 }
                             },
                             { InstallProgress.isCancelled() },
-                            { stage -> InstallProgress.stageFor(taskId, stage) }
+                            { stage -> InstallProgress.stageFor(taskId, stage) },
                         )
                         bytes != null && PluginManager.importLocal("github.zip", bytes)
                     }) { ok ->
                         Toast.makeText(
                             context,
                             if (ok) "安装成功" else "安装失败：仓库/链接不可用",
-                            Toast.LENGTH_LONG
+                            Toast.LENGTH_LONG,
                         ).show()
                     }
                 }
@@ -1506,30 +1664,42 @@ class PluginTab(private val act: Activity) : LinearLayout(act) {
             }
             if (selecting) {
                 val isHelp = p.id == "help"
-                row.addView(TextView(context).apply {
-                    text = if (isHelp) "\uD83D\uDD12" else if (isSel) "\u2611" else "\u2610"
-                    textSize = 18f
-                    setPadding(0, 0, dp(8), 0)
-                    setTextColor(color(if (isHelp) R.color.textSub else R.color.colorPrimary))
-                })
+                row.addView(
+                    TextView(context).apply {
+                        text = if (isHelp) {
+                            "\uD83D\uDD12"
+                        } else if (isSel) {
+                            "\u2611"
+                        } else {
+                            "\u2610"
+                        }
+                        textSize = 18f
+                        setPadding(0, 0, dp(8), 0)
+                        setTextColor(color(if (isHelp) R.color.textSub else R.color.colorPrimary))
+                    },
+                )
             }
             val col = LinearLayout(context).apply { orientation = VERTICAL }
-            col.addView(TextView(context).apply {
-                text = "${p.name} v${p.version}  ${if (p.enabled) "\uD83D\uDFE2" else "\u26AA"}  ${TRIGGER_NAMES[p.trigger] ?: p.trigger}"
-                textSize = 12f
-                setTypeface(typeface, android.graphics.Typeface.BOLD)
-                setTextColor(color(R.color.textMain))
-            })
+            col.addView(
+                TextView(context).apply {
+                    text = "${p.name} v${p.version}  ${if (p.enabled) "\uD83D\uDFE2" else "\u26AA"}  ${TRIGGER_NAMES[p.trigger] ?: p.trigger}"
+                    textSize = 12f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    setTextColor(color(R.color.textMain))
+                },
+            )
             if (p.id == "netdisk") {
                 val tagRow = LinearLayout(context).apply { orientation = HORIZONTAL }
                 col.addView(tagRow)
                 for (plat in netdiskPlatforms) {
                     val logged = Netdisk.hasLoginTicket(plat.id)
-                    tagRow.addView(TextView(context).apply {
-                        text = plat.name + if (logged) " \u2713" else ""
-                        textSize = 10f
-                        setTextColor(Color.parseColor(if (logged) "#2E7D32" else "#C62828"))
-                    })
+                    tagRow.addView(
+                        TextView(context).apply {
+                            text = plat.name + if (logged) " \u2713" else ""
+                            textSize = 10f
+                            setTextColor(Color.parseColor(if (logged) "#2E7D32" else "#C62828"))
+                        },
+                    )
                 }
             }
             row.addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))

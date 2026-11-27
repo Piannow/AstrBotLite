@@ -43,16 +43,22 @@ class AccountTab(private val act: Activity) : LinearLayout(act) {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        addView(top, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ))
-        top.addView(TextView(context).apply {
-            text = "账号"
-            textSize = 18f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setTextColor(color(R.color.textMain))
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        addView(
+            top,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        top.addView(
+            TextView(context).apply {
+                text = "账号"
+                textSize = 18f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(color(R.color.textMain))
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+        )
         tvCount = TextView(context).apply {
             textSize = 12f
             setTextColor(color(R.color.textSub))
@@ -104,11 +110,16 @@ class AccountTab(private val act: Activity) : LinearLayout(act) {
                 if (i + j < accounts.size) {
                     val acc = accounts[i + j]
                     val card = buildAccountCard(acc)
-                    row.addView(card, LinearLayout.LayoutParams(
-                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-                    ).apply {
-                        if (j == 0) marginEnd = dp(6) else marginStart = dp(6)
-                    })
+                    row.addView(
+                        card,
+                        LinearLayout.LayoutParams(
+                            0,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            1f,
+                        ).apply {
+                            if (j == 0) marginEnd = dp(6) else marginStart = dp(6)
+                        },
+                    )
                 } else {
                     row.addView(View(context), LinearLayout.LayoutParams(0, 1, 1f))
                 }
@@ -118,9 +129,14 @@ class AccountTab(private val act: Activity) : LinearLayout(act) {
 
         val addRow = LinearLayout(context).apply { orientation = HORIZONTAL }
         gridContainer.addView(addRow)
-        addRow.addView(buildAddCard(), LinearLayout.LayoutParams(
-            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-        ).apply { marginEnd = dp(6) })
+        addRow.addView(
+            buildAddCard(),
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f,
+            ).apply { marginEnd = dp(6) },
+        )
         addRow.addView(View(context), LinearLayout.LayoutParams(0, 1, 1f).apply { marginStart = dp(6) })
         post { com.astrbot.lite.ui.DpadFocus.apply(gridContainer) }
     }
@@ -137,7 +153,7 @@ class AccountTab(private val act: Activity) : LinearLayout(act) {
                 cornerRadius = 12 * resources.displayMetrics.density
                 setStroke(
                     if (active) dp(2) else dp(1),
-                    if (active) color(R.color.colorPrimary) else color(R.color.divider)
+                    if (active) color(R.color.colorPrimary) else color(R.color.divider),
                 )
             }
             isClickable = true
@@ -146,50 +162,58 @@ class AccountTab(private val act: Activity) : LinearLayout(act) {
             com.astrbot.lite.ui.DpadFocus.highlightGroup(this)
         }
 
-        card.addView(TextView(context).apply {
-            text = acc.name
-            textSize = 16f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setTextColor(color(R.color.textMain))
-            setPadding(0, 0, 0, dp(6))
-        })
+        card.addView(
+            TextView(context).apply {
+                text = acc.name
+                textSize = 16f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(color(R.color.textMain))
+                setPadding(0, 0, 0, dp(6))
+            },
+        )
 
         card.addView(kvRow("环境", if (acc.env == "sandbox") "沙箱" else "正式"))
         card.addView(kvRowStatus("在线状态", online))
         card.addView(kvRow("AppID", maskAppId(acc.appId)))
-        val persona = try { PersonaManager.active().name } catch (_: Throwable) { "—" }
+        val persona = try {
+            PersonaManager.active().name
+        } catch (_: Throwable) {
+            "—"
+        }
         card.addView(kvRow("人设卡", persona))
 
         return card
     }
 
-    private fun buildAddCard(): View {
-        return LinearLayout(context).apply {
-            orientation = VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(12), dp(24), dp(12), dp(24))
-            background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(color(R.color.card))
-                cornerRadius = 12 * resources.displayMetrics.density
-                setStroke(dp(1), color(R.color.divider))
-            }
-            isClickable = true
-            isFocusable = true
-            addView(TextView(context).apply {
+    private fun buildAddCard(): View = LinearLayout(context).apply {
+        orientation = VERTICAL
+        gravity = Gravity.CENTER
+        setPadding(dp(12), dp(24), dp(12), dp(24))
+        background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(color(R.color.card))
+            cornerRadius = 12 * resources.displayMetrics.density
+            setStroke(dp(1), color(R.color.divider))
+        }
+        isClickable = true
+        isFocusable = true
+        addView(
+            TextView(context).apply {
                 text = "\uD83D\uDC64"
                 textSize = 32f
                 gravity = Gravity.CENTER
-            })
-            addView(TextView(context).apply {
+            },
+        )
+        addView(
+            TextView(context).apply {
                 text = "新增账号…"
                 textSize = 12f
                 setTextColor(color(R.color.textSub))
                 gravity = Gravity.CENTER
                 setPadding(0, dp(6), 0, 0)
-            })
-            setOnClickListener { showAddAccountDialog() }
-            com.astrbot.lite.ui.DpadFocus.highlightGroup(this)
-        }
+            },
+        )
+        setOnClickListener { showAddAccountDialog() }
+        com.astrbot.lite.ui.DpadFocus.highlightGroup(this)
     }
 
     private fun kvRow(k: String, v: String): View {
@@ -197,17 +221,21 @@ class AccountTab(private val act: Activity) : LinearLayout(act) {
             orientation = HORIZONTAL
             setPadding(0, dp(3), 0, dp(3))
         }
-        row.addView(TextView(context).apply {
-            text = k
-            textSize = 11f
-            setTextColor(color(R.color.textSub))
-            width = dp(60)
-        })
-        row.addView(TextView(context).apply {
-            text = v
-            textSize = 13f
-            setTextColor(color(R.color.textMain))
-        })
+        row.addView(
+            TextView(context).apply {
+                text = k
+                textSize = 11f
+                setTextColor(color(R.color.textSub))
+                width = dp(60)
+            },
+        )
+        row.addView(
+            TextView(context).apply {
+                text = v
+                textSize = 13f
+                setTextColor(color(R.color.textMain))
+            },
+        )
         return row
     }
 
@@ -217,22 +245,28 @@ class AccountTab(private val act: Activity) : LinearLayout(act) {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dp(3), 0, dp(3))
         }
-        row.addView(TextView(context).apply {
-            text = k
-            textSize = 11f
-            setTextColor(color(R.color.textSub))
-            width = dp(60)
-        })
-        row.addView(TextView(context).apply {
-            text = "\u25CF"
-            textSize = 11f
-            setTextColor(if (online) color(R.color.ok) else color(R.color.err))
-        })
-        row.addView(TextView(context).apply {
-            text = if (online) " 在线" else " 离线"
-            textSize = 13f
-            setTextColor(color(R.color.textMain))
-        })
+        row.addView(
+            TextView(context).apply {
+                text = k
+                textSize = 11f
+                setTextColor(color(R.color.textSub))
+                width = dp(60)
+            },
+        )
+        row.addView(
+            TextView(context).apply {
+                text = "\u25CF"
+                textSize = 11f
+                setTextColor(if (online) color(R.color.ok) else color(R.color.err))
+            },
+        )
+        row.addView(
+            TextView(context).apply {
+                text = if (online) " 在线" else " 离线"
+                textSize = 13f
+                setTextColor(color(R.color.textMain))
+            },
+        )
         return row
     }
 
@@ -244,45 +278,55 @@ class AccountTab(private val act: Activity) : LinearLayout(act) {
     private fun openAccountMenu(acc: Account) {
         val online = BotService.engines()[acc.id]?.isRunning == true
         val items = mutableListOf<Pair<String, () -> Unit>>()
-        items.add((if (online) "停止" else "启动") to {
-            BotService.startAccount(act, acc.id, !online)
-            Toast.makeText(act, acc.name + (if (online) " 已停止" else " 已启动"), Toast.LENGTH_SHORT).show()
-            handler.postDelayed({ updateCards() }, 500)
-        })
-        items.add("重启" to {
-            val eng = BotService.engines()[acc.id]
-            if (eng != null) {
-                Toast.makeText(act, acc.name + " 正在重启…", Toast.LENGTH_SHORT).show()
-                eng.restart()
-                handler.postDelayed({ updateCards() }, 1000)
-            } else {
-                Toast.makeText(act, acc.name + " 未在运行", Toast.LENGTH_SHORT).show()
-            }
-        })
-        items.add("设置账号（QQ 接入 + AI 配置）" to {
-            val i = android.content.Intent(act, com.astrbot.lite.ui.WizardActivity::class.java)
-            i.putExtra("account_id", acc.id)
-            act.startActivity(i)
-        })
+        items.add(
+            (if (online) "停止" else "启动") to {
+                BotService.startAccount(act, acc.id, !online)
+                Toast.makeText(act, acc.name + (if (online) " 已停止" else " 已启动"), Toast.LENGTH_SHORT).show()
+                handler.postDelayed({ updateCards() }, 500)
+            },
+        )
+        items.add(
+            "重启" to {
+                val eng = BotService.engines()[acc.id]
+                if (eng != null) {
+                    Toast.makeText(act, acc.name + " 正在重启…", Toast.LENGTH_SHORT).show()
+                    eng.restart()
+                    handler.postDelayed({ updateCards() }, 1000)
+                } else {
+                    Toast.makeText(act, acc.name + " 未在运行", Toast.LENGTH_SHORT).show()
+                }
+            },
+        )
+        items.add(
+            "设置账号（QQ 接入 + AI 配置）" to {
+                val i = android.content.Intent(act, com.astrbot.lite.ui.WizardActivity::class.java)
+                i.putExtra("account_id", acc.id)
+                act.startActivity(i)
+            },
+        )
         if (AccountManager.loadAll().size > 1) {
-            items.add("删除此账号" to {
-                AlertDialog.Builder(act)
-                    .setTitle("删除账号")
-                    .setMessage("确定删除「" + acc.name + "」吗？此操作不可撤销。")
-                    .setPositiveButton("删除") { _, _ ->
-                        // 修复：先停服务（失败不阻断删除），再检查 remove 返回值
-                        try { BotService.startAccount(act, acc.id, false) } catch (_: Throwable) {}
-                        val ok = AccountManager.remove(acc.id)
-                        if (ok) {
-                            updateCards()
-                            Toast.makeText(act, "已删除「" + acc.name + "」", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(act, "删除失败：账号不存在或为唯一账号", Toast.LENGTH_LONG).show()
+            items.add(
+                "删除此账号" to {
+                    AlertDialog.Builder(act)
+                        .setTitle("删除账号")
+                        .setMessage("确定删除「" + acc.name + "」吗？此操作不可撤销。")
+                        .setPositiveButton("删除") { _, _ ->
+                            // 修复：先停服务（失败不阻断删除），再检查 remove 返回值
+                            try {
+                                BotService.startAccount(act, acc.id, false)
+                            } catch (_: Throwable) {}
+                            val ok = AccountManager.remove(acc.id)
+                            if (ok) {
+                                updateCards()
+                                Toast.makeText(act, "已删除「" + acc.name + "」", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(act, "删除失败：账号不存在或为唯一账号", Toast.LENGTH_LONG).show()
+                            }
                         }
-                    }
-                    .setNegativeButton("取消", null)
-                    .show()
-            })
+                        .setNegativeButton("取消", null)
+                        .show()
+                },
+            )
         }
         showActionSheet(acc.name, items)
     }
@@ -309,10 +353,13 @@ class AccountTab(private val act: Activity) : LinearLayout(act) {
                 }
             }
             buttons.add(b)
-            v.addView(b, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = dp(6) })
+            v.addView(
+                b,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { bottomMargin = dp(6) },
+            )
         }
         val cancel = Button(context).apply {
             text = "取消"
@@ -322,10 +369,13 @@ class AccountTab(private val act: Activity) : LinearLayout(act) {
             setOnClickListener { dlg.dismiss() }
         }
         buttons.add(cancel)
-        v.addView(cancel, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ))
+        v.addView(
+            cancel,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
         dlg.setOnShowListener {
             buttons.firstOrNull()?.requestFocus()
         }
@@ -333,16 +383,28 @@ class AccountTab(private val act: Activity) : LinearLayout(act) {
     }
 
     private fun showAddAccountDialog() {
-        val etName = EditText(context).apply { hint = "账号名称（如：主力号）"; setTextSize(13f) }
-        val etAppId = EditText(context).apply { hint = "AppID"; setTextSize(13f) }
-        val etSecret = EditText(context).apply { hint = "AppSecret"; setTextSize(13f) }
+        val etName = EditText(context).apply {
+            hint = "账号名称（如：主力号）"
+            setTextSize(13f)
+        }
+        val etAppId = EditText(context).apply {
+            hint = "AppID"
+            setTextSize(13f)
+        }
+        val etSecret = EditText(context).apply {
+            hint = "AppSecret"
+            setTextSize(13f)
+        }
         val spEnv = Spinner(context).apply {
             adapter = android.widget.ArrayAdapter(
-                context, android.R.layout.simple_spinner_item,
-                arrayOf("正式环境（prod）", "沙箱环境（sandbox）")
+                context,
+                android.R.layout.simple_spinner_item,
+                arrayOf("正式环境（prod）", "沙箱环境（sandbox）"),
             )
         }
-        try { com.astrbot.lite.ui.DpadFocus.escapeSpinner(spEnv) } catch (_: Throwable) {}
+        try {
+            com.astrbot.lite.ui.DpadFocus.escapeSpinner(spEnv)
+        } catch (_: Throwable) {}
         val col = LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(dp(16), dp(8), dp(16), dp(8))

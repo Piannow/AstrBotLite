@@ -64,7 +64,8 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
     private var listMode: String = "white"
 
     private val lpWrap = LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.WRAP_CONTENT,
     )
     private val lpHalf = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
 
@@ -72,7 +73,7 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
     private val logListener: (LogLine) -> Unit = { line ->
         handler.post {
             tvLog.append(
-                "[" + fmt.format(Date(line.time)) + "] [" + line.level + "] " + line.text + "\n"
+                "[" + fmt.format(Date(line.time)) + "] [" + line.level + "] " + line.text + "\n",
             )
             // 1.7.237：界面日志也限长（约 2 万字），长时间运行不再无限堆积
             val t = tvLog.text
@@ -120,45 +121,72 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
             orientation = HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
         }
-        addView(topBar, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
-        topBar.addView(TextView(context).apply {
-            text = "设置"
-            textSize = 18f
-            setTypeface(typeface, Typeface.BOLD)
-            setTextColor(color(R.color.textMain))
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        topBar.addView(TextView(context).apply {
-            text = "v${BuildConfig.VERSION_NAME}"
-            textSize = 12f
-            setTextColor(color(R.color.colorPrimary))
-        })
+        addView(
+            topBar,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        topBar.addView(
+            TextView(context).apply {
+                text = "设置"
+                textSize = 18f
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(color(R.color.textMain))
+            },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+        )
+        topBar.addView(
+            TextView(context).apply {
+                text = "v${BuildConfig.VERSION_NAME}"
+                textSize = 12f
+                setTextColor(color(R.color.colorPrimary))
+            },
+        )
 
         // 主体：左侧滚动设置项 + 右侧竖排工具按钮
         val mainRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
             setPadding(0, dp(12), 0, 0)
         }
-        addView(mainRow, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        addView(
+            mainRow,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
         val scroll = ScrollView(context)
         val col = LinearLayout(context).apply { orientation = VERTICAL }
-        scroll.addView(col, ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
-        mainRow.addView(scroll, LinearLayout.LayoutParams(
-            0, ViewGroup.LayoutParams.MATCH_PARENT, 1f
-        ))
+        scroll.addView(
+            col,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        mainRow.addView(
+            scroll,
+            LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                1f,
+            ),
+        )
 
         val toolCol = LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(dp(8), 0, 0, 0)
         }
-        mainRow.addView(toolCol, LinearLayout.LayoutParams(
-            dp(96), ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
+        mainRow.addView(
+            toolCol,
+            LinearLayout.LayoutParams(
+                dp(96),
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
         addToolBtn(toolCol, "知识库") {
             act.startActivity(Intent(act, KnowledgeActivity::class.java))
         }
@@ -172,12 +200,14 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
 
         // 功能开关
         col.addView(section("功能开关"))
-        col.addView(TextView(context).apply {
-            text = "AI 池常驻启用（无需开关）：特性分配后与插件配置页双向同步"
-            textSize = 11f
-            setTextColor(0xFF7B1FA2.toInt())
-            setPadding(0, dp(2), 0, dp(6))
-        })
+        col.addView(
+            TextView(context).apply {
+                text = "AI 池常驻启用（无需开关）：特性分配后与插件配置页双向同步"
+                textSize = 11f
+                setTextColor(0xFF7B1FA2.toInt())
+                setPadding(0, dp(2), 0, dp(6))
+            },
+        )
         switchKnowledge = makeSwitch(col, "知识库", Config.knowledgeEnabled) {
             Config.knowledgeEnabled = it
         }.second
@@ -190,14 +220,16 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
         listSectionWrapper = wrapper
         col.addView(wrapper)
         wrapper.addView(section("名单管理"))
-        wrapper.addView(TextView(context).apply {
-            text = "名单填「用户ID(openid)」，不是QQ号——QQ官方机器人接口不下发QQ号。" +
-                "让对方给机器人发「我的ID」，就能拿到那串ID（逗号/空格/换行分隔可填多个）。" +
-                "白名单和黑名单互斥：开启一个会自动关闭另一个。"
-            textSize = 12f
-            setTextColor(resources.getColor(R.color.textSub, null))
-            setPadding(0, dp(2), 0, dp(4))
-        })
+        wrapper.addView(
+            TextView(context).apply {
+                text = "名单填「用户ID(openid)」，不是QQ号——QQ官方机器人接口不下发QQ号。" +
+                    "让对方给机器人发「我的ID」，就能拿到那串ID（逗号/空格/换行分隔可填多个）。" +
+                    "白名单和黑名单互斥：开启一个会自动关闭另一个。"
+                textSize = 12f
+                setTextColor(resources.getColor(R.color.textSub, null))
+                setPadding(0, dp(2), 0, dp(4))
+            },
+        )
         val listTabRow = LinearLayout(context).apply { orientation = HORIZONTAL }
         btnWhite = Button(context).apply {
             text = "白名单"
@@ -211,12 +243,22 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
             isFocusable = true
             DpadFocus.highlight(this)
         }
-        listTabRow.addView(btnWhite, LinearLayout.LayoutParams(
-            0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f
-        ))
-        listTabRow.addView(btnBlack, LinearLayout.LayoutParams(
-            0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f
-        ))
+        listTabRow.addView(
+            btnWhite,
+            LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f,
+            ),
+        )
+        listTabRow.addView(
+            btnBlack,
+            LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f,
+            ),
+        )
         wrapper.addView(listTabRow)
 
         val listPanel = LinearLayout(context).apply { orientation = VERTICAL }
@@ -267,14 +309,17 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
             refreshListToggle()
         }
         refreshListToggle()
-        wrapper.addView(Button(context).apply {
-            text = "保存名单"
-            setOnClickListener {
-                Config.whitelist = etWhitelist.text.toString().trim()
-                Config.blacklist = etBlacklist.text.toString().trim()
-                toast("名单已保存")
-            }
-        }, lpWrap)
+        wrapper.addView(
+            Button(context).apply {
+                text = "保存名单"
+                setOnClickListener {
+                    Config.whitelist = etWhitelist.text.toString().trim()
+                    Config.blacklist = etBlacklist.text.toString().trim()
+                    toast("名单已保存")
+                }
+            },
+            lpWrap,
+        )
 
         // 主日志台
         col.addView(section("主日志台"))
@@ -289,34 +334,50 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
             addView(tvLog)
             minimumHeight = dp(180)
         }
-        col.addView(logScroll, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, dp(220)
-        ))
+        col.addView(
+            logScroll,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(220),
+            ),
+        )
         val logRow = LinearLayout(context).apply { orientation = HORIZONTAL }
         col.addView(logRow)
-        logRow.addView(Button(context).apply {
-            text = "刷新日志"
-            setOnClickListener { showLog() }
-        }, lpHalf)
-        logRow.addView(Button(context).apply {
-            text = "复制日志"
-            setOnClickListener {
-                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                cm.setPrimaryClip(ClipData.newPlainText("log", Logs.text()))
-                toast("已复制")
-            }
-        }, lpHalf)
-        logRow.addView(Button(context).apply {
-            text = "清空"
-            setOnClickListener {
-                Logs.clear()
-                tvLog.text = ""
-            }
-        }, lpHalf)
-        col.addView(Button(context).apply {
-            text = "打开完整日志（全屏滑动）"
-            setOnClickListener { act.startActivity(Intent(act, LogViewActivity::class.java)) }
-        }, lpWrap)
+        logRow.addView(
+            Button(context).apply {
+                text = "刷新日志"
+                setOnClickListener { showLog() }
+            },
+            lpHalf,
+        )
+        logRow.addView(
+            Button(context).apply {
+                text = "复制日志"
+                setOnClickListener {
+                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    cm.setPrimaryClip(ClipData.newPlainText("log", Logs.text()))
+                    toast("已复制")
+                }
+            },
+            lpHalf,
+        )
+        logRow.addView(
+            Button(context).apply {
+                text = "清空"
+                setOnClickListener {
+                    Logs.clear()
+                    tvLog.text = ""
+                }
+            },
+            lpHalf,
+        )
+        col.addView(
+            Button(context).apply {
+                text = "打开完整日志（全屏滑动）"
+                setOnClickListener { act.startActivity(Intent(act, LogViewActivity::class.java)) }
+            },
+            lpWrap,
+        )
 
         // 对话记录
         col.addView(section("对话记录"))
@@ -332,41 +393,55 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
             addView(tvDayLog)
             minimumHeight = dp(120)
         }
-        col.addView(dayLogScroll, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, dp(140)
-        ))
-        col.addView(TextView(context).apply {
-            text = "存储位置：" + ChatStore.path()
-            textSize = 10f
-            setTextColor(color(R.color.textSub))
-            setTextIsSelectable(true)
-            setPadding(0, dp(4), 0, dp(2))
-        })
-        col.addView(Button(context).apply {
-            text = "管理聊天记录（按群/用户分组 · 多选删除 · 编辑内容）"
-            setOnClickListener {
-                act.startActivity(Intent(act, ChatHistoryActivity::class.java))
-            }
-        }, lpWrap)
+        col.addView(
+            dayLogScroll,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(140),
+            ),
+        )
+        col.addView(
+            TextView(context).apply {
+                text = "存储位置：" + ChatStore.path()
+                textSize = 10f
+                setTextColor(color(R.color.textSub))
+                setTextIsSelectable(true)
+                setPadding(0, dp(4), 0, dp(2))
+            },
+        )
+        col.addView(
+            Button(context).apply {
+                text = "管理聊天记录（按群/用户分组 · 多选删除 · 编辑内容）"
+                setOnClickListener {
+                    act.startActivity(Intent(act, ChatHistoryActivity::class.java))
+                }
+            },
+            lpWrap,
+        )
 
         // 关于
         col.addView(section("关于"))
-        col.addView(TextView(context).apply {
-            text = "AstrBot Lite v${BuildConfig.VERSION_NAME}\n" +
-                "· 接入 QQ 官方机器人（q.qq.com 开放平台）\n" +
-                "· 兼容 OpenAI / DeepSeek / 智谱 / 火山方舟 等 API\n" +
-                "· AI池 / 知识库 / 内心思考 / 好感度系统\n" +
-                "· 白名单 / 黑名单\n" +
-                "· 图生图 / AI生视频 / 字词替换插件\n" +
-                "· 模拟QQ测试环境\n" +
-                "· 人设卡：JSON 文本，可导入导出分享\n"
-            textSize = 12f
-            setTextColor(color(R.color.textSub))
-        })
-        col.addView(Button(context).apply {
-            text = "重置应用（重新初始化）"
-            setOnClickListener { confirmReset() }
-        }, lpWrap)
+        col.addView(
+            TextView(context).apply {
+                text = "AstrBot Lite v${BuildConfig.VERSION_NAME}\n" +
+                    "· 接入 QQ 官方机器人（q.qq.com 开放平台）\n" +
+                    "· 兼容 OpenAI / DeepSeek / 智谱 / 火山方舟 等 API\n" +
+                    "· AI池 / 知识库 / 内心思考 / 好感度系统\n" +
+                    "· 白名单 / 黑名单\n" +
+                    "· 图生图 / AI生视频 / 字词替换插件\n" +
+                    "· 模拟QQ测试环境\n" +
+                    "· 人设卡：JSON 文本，可导入导出分享\n"
+                textSize = 12f
+                setTextColor(color(R.color.textSub))
+            },
+        )
+        col.addView(
+            Button(context).apply {
+                text = "重置应用（重新初始化）"
+                setOnClickListener { confirmReset() }
+            },
+            lpWrap,
+        )
 
         DpadFocus.apply(scroll)
         post { DpadFocus.apply(this) }
@@ -374,17 +449,21 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
     }
 
     private fun addToolBtn(toolCol: LinearLayout, label: String, onclick: () -> Unit) {
-        toolCol.addView(Button(context).apply {
-            text = label
-            textSize = 12f
-            isFocusable = true
-            isFocusableInTouchMode = true
-            stateListAnimator = null
-            DpadFocus.highlight(this)
-            setOnClickListener { onclick() }
-        }, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = dp(6) })
+        toolCol.addView(
+            Button(context).apply {
+                text = label
+                textSize = 12f
+                isFocusable = true
+                isFocusableInTouchMode = true
+                stateListAnimator = null
+                DpadFocus.highlight(this)
+                setOnClickListener { onclick() }
+            },
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(6) },
+        )
     }
 
     private fun toggleListSection() {
@@ -418,31 +497,39 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
             orientation = VERTICAL
             setPadding(dp(16), dp(8), dp(16), dp(8))
         }
-        col.addView(TextView(context).apply {
-            text = "Base URL"
-            textSize = 12f
-            setPadding(0, dp(4), 0, dp(2))
-        })
+        col.addView(
+            TextView(context).apply {
+                text = "Base URL"
+                textSize = 12f
+                setPadding(0, dp(4), 0, dp(2))
+            },
+        )
         col.addView(etBase)
-        col.addView(TextView(context).apply {
-            text = "API Key"
-            textSize = 12f
-            setPadding(0, dp(8), 0, dp(2))
-        })
+        col.addView(
+            TextView(context).apply {
+                text = "API Key"
+                textSize = 12f
+                setPadding(0, dp(8), 0, dp(2))
+            },
+        )
         col.addView(etKey)
-        col.addView(TextView(context).apply {
-            text = "模型"
-            textSize = 12f
-            setPadding(0, dp(8), 0, dp(2))
-        })
+        col.addView(
+            TextView(context).apply {
+                text = "模型"
+                textSize = 12f
+                setPadding(0, dp(8), 0, dp(2))
+            },
+        )
         col.addView(etModel)
         col.addView(tvResult)
-        col.addView(TextView(context).apply {
-            text = "提示：Base URL 需包含 /v1（如 https://api.openai.com/v1），端点会拼上 /embeddings。本地可填 http://127.0.0.1:11434/v1"
-            textSize = 10f
-            setTextColor(color(R.color.textSub))
-            setPadding(0, dp(8), 0, 0)
-        })
+        col.addView(
+            TextView(context).apply {
+                text = "提示：Base URL 需包含 /v1（如 https://api.openai.com/v1），端点会拼上 /embeddings。本地可填 http://127.0.0.1:11434/v1"
+                textSize = 10f
+                setTextColor(color(R.color.textSub))
+                setPadding(0, dp(8), 0, 0)
+            },
+        )
         val dlg = AlertDialog.Builder(act)
             .setTitle("知识库嵌入模型")
             .setView(col)
@@ -528,16 +615,16 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
         rowBlacklist.visibility = if (isWhite) View.GONE else View.VISIBLE
         etBlacklist.visibility = if (isWhite) View.GONE else View.VISIBLE
         btnWhite.setBackgroundColor(
-            if (isWhite) resources.getColor(R.color.colorPrimary, null) else 0
+            if (isWhite) resources.getColor(R.color.colorPrimary, null) else 0,
         )
         btnWhite.setTextColor(
-            if (isWhite) Color.WHITE else resources.getColor(R.color.textMain, null)
+            if (isWhite) Color.WHITE else resources.getColor(R.color.textMain, null),
         )
         btnBlack.setBackgroundColor(
-            if (isWhite) 0 else resources.getColor(R.color.colorPrimary, null)
+            if (isWhite) 0 else resources.getColor(R.color.colorPrimary, null),
         )
         btnBlack.setTextColor(
-            if (isWhite) resources.getColor(R.color.textMain, null) else Color.WHITE
+            if (isWhite) resources.getColor(R.color.textMain, null) else Color.WHITE,
         )
         DpadFocus.syncBase(btnWhite)
         DpadFocus.syncBase(btnBlack)
@@ -611,7 +698,7 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
                 Config.clearAll()
                 act.startActivity(
                     Intent(act, InitActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
                 )
                 act.finish()
             }
@@ -639,15 +726,18 @@ class SettingsTab(private val act: Activity) : LinearLayout(act) {
         col: LinearLayout,
         label: String,
         initial: Boolean,
-        onSave: (Boolean) -> Unit
+        onSave: (Boolean) -> Unit,
     ): Pair<View, Switch> {
         val row = LinearLayout(context).apply { orientation = HORIZONTAL }
         col.addView(row, lpWrap)
-        row.addView(TextView(context).apply {
-            text = label
-            textSize = 14f
-            setTextColor(color(R.color.textMain))
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(
+            TextView(context).apply {
+                text = label
+                textSize = 14f
+                setTextColor(color(R.color.textMain))
+            },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+        )
         val sw = Switch(context).apply {
             isChecked = initial
             setOnCheckedChangeListener { _: CompoundButton, v: Boolean -> onSave(v) }

@@ -10,14 +10,17 @@ import java.util.concurrent.ConcurrentHashMap
 object ContextManager {
 
     private const val MEMORY_ID = "memory"
-    private const val EXTRACT_EVERY = 8   // 画像不完整时，每间隔多少条消息提取一次
+    private const val EXTRACT_EVERY = 8 // 画像不完整时，每间隔多少条消息提取一次
 
     /** convKey -> 分层摘要：layers[0]=消息级摘要列表，layers[1]=摘要的摘要，以此类推（每满 LAYER_SIZE 条提升一层） */
     private val layers = ConcurrentHashMap<String, MutableList<MutableList<String>>>()
+
     /** 累计消息数（按会话）：每满 sumThreshold 条触发一次总结 */
     private val msgCounters = ConcurrentHashMap<String, Int>()
+
     /** 上次已总结到的累计消息数（按会话） */
     private val lastCondensedAt = ConcurrentHashMap<String, Int>()
+
     /** 每层摘要达到该数量 → 整体再总结提升一层 */
     private const val LAYER_SIZE = 5
 
@@ -30,8 +33,7 @@ object ContextManager {
     fun favorAdjustEnabled(): Boolean = cfg("favorAdjust", true)
     fun sumThreshold(): Int = PluginManager.configMap(MEMORY_ID)["sumThreshold"]?.toIntOrNull() ?: 20
 
-    private fun cfg(key: String, def: Boolean): Boolean =
-        PluginManager.configMap(MEMORY_ID)[key]?.equals("true", ignoreCase = true) ?: def
+    private fun cfg(key: String, def: Boolean): Boolean = PluginManager.configMap(MEMORY_ID)[key]?.equals("true", ignoreCase = true) ?: def
 
     // ---------------- 上下文总结 / 清理 ----------------
     /** 注入用摘要：从最高层到最低层拼接（高层是低层的浓缩，AI 看全貌又不过载） */
@@ -61,15 +63,18 @@ object ContextManager {
         val keep = Config.historyLen.coerceAtLeast(6)
         val total = msgCounters[convKey] ?: return
         val last = lastCondensedAt.getOrPut(convKey) { total }
-        if (total - last < batch) return   // 未累积满一个批次
+        if (total - last < batch) return // 未累积满一个批次
         // 只在锁内读取“最旧消息”快照，随后【释放锁】再调用 AI，避免记忆总结的慢 AI 卡住回复线程
         val oldest = synchronized(hist) {
-            if (hist.size <= keep) emptyList()
-            else hist.toList().take(hist.size - keep)
+            if (hist.size <= keep) {
+                emptyList()
+            } else {
+                hist.toList().take(hist.size - keep)
+            }
         }
         if (oldest.isEmpty()) return
         val chunk = summarizeChat(oldest)
-        if (chunk == null || chunk.isBlank()) return   // 总结失败：保留历史，等下次
+        if (chunk == null || chunk.isBlank()) return // 总结失败：保留历史，等下次
         addLayer(convKey, chunk)
         // 重新加锁，仅把已总结的最旧 removeCount 条从历史里移除
         synchronized(hist) {
@@ -91,7 +96,7 @@ object ContextManager {
         while (list.size <= level) list.add(mutableListOf())
         if (list[level].size < LAYER_SIZE) return
         val chunk = summarizeText(list[level].joinToString("\n"))
-        if (chunk == null || chunk.isBlank()) return   // 提升失败：保留，等下次
+        if (chunk == null || chunk.isBlank()) return // 提升失败：保留，等下次
         list[level].clear()
         while (list.size <= level + 1) list.add(mutableListOf())
         list[level + 1].add(chunk)
@@ -157,8 +162,7 @@ object ContextManager {
     }
 
     /** 历史（最近 Config.historyLen 条）+ 当前消息统一渲染 */
-    fun renderRecent(hist: ArrayDeque<ChatMsg>, kind: String, finalUser: ChatMsg): List<ChatMsg> =
-        (hist.toList().takeLast(Config.historyLen) + finalUser).map { renderForAi(it, kind) }
+    fun renderRecent(hist: ArrayDeque<ChatMsg>, kind: String, finalUser: ChatMsg): List<ChatMsg> = (hist.toList().takeLast(Config.historyLen) + finalUser).map { renderForAi(it, kind) }
 
     // ---------------- 用户画像 ----------------
     fun renderProfileSystem(profile: UserProfile?): String? {

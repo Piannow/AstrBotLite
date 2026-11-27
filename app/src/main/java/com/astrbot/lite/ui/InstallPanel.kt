@@ -31,7 +31,11 @@ object InstallPanel {
         handler.removeCallbacksAndMessages(null)
         val content = act.findViewById<ViewGroup>(android.R.id.content) ?: return
         // 同宿主重复打开：先摘旧条
-        barView?.let { old -> try { content.removeView(old) } catch (_: Exception) {} }
+        barView?.let { old ->
+            try {
+                content.removeView(old)
+            } catch (_: Exception) {}
+        }
 
         val stageText = TextView(act).apply {
             textSize = 13f
@@ -57,11 +61,14 @@ object InstallPanel {
         val headRow = LinearLayout(act).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(TextView(act).apply {
-                textSize = 13f
-                setTextColor(Color.parseColor("#4FC3F7"))
-                text = title
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(
+                TextView(act).apply {
+                    textSize = 13f
+                    setTextColor(Color.parseColor("#4FC3F7"))
+                    text = title
+                },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            )
             addView(pctText)
             addView(closeBtn)
         }
@@ -71,17 +78,29 @@ object InstallPanel {
             setBackgroundColor(Color.parseColor("#263238"))
             elevation = dp(act, 8).toFloat()
             addView(headRow)
-            addView(stageText, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp(act, 4) })
-            addView(bar, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp(act, 6) })
+            addView(
+                stageText,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(act, 4) },
+            )
+            addView(
+                bar,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(act, 6) },
+            )
         }
-        content.addView(root, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP
-        ))
+        content.addView(
+            root,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP,
+            ),
+        )
         barView = root
         hostContent = content
 
@@ -112,11 +131,14 @@ object InstallPanel {
     private fun detach() {
         handler.removeCallbacksAndMessages(null)
         InstallProgress.listener = null
-        barView?.let { v -> try { hostContent?.removeView(v) } catch (_: Exception) {} }
+        barView?.let { v ->
+            try {
+                hostContent?.removeView(v)
+            } catch (_: Exception) {}
+        }
         barView = null
         hostContent = null
     }
 
-    private fun dp(act: Activity, v: Int): Int =
-        (v * act.resources.displayMetrics.density).toInt()
+    private fun dp(act: Activity, v: Int): Int = (v * act.resources.displayMetrics.density).toInt()
 }

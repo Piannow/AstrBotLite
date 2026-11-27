@@ -1,8 +1,8 @@
 package com.astrbot.lite.core
 
-import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 
 /**
  * 机器人账号（1.7.232+）：支持同一 App 运行多个官方 QQ 机器人，各账号插件/状态完全隔离。
@@ -22,8 +22,8 @@ data class Account(
     var appId: String,
     var secret: String,
     var apiBase: String,
-    var env: String,           // "prod" | "sandbox"
-    val createdAt: Long = System.currentTimeMillis()
+    var env: String, // "prod" | "sandbox"
+    val createdAt: Long = System.currentTimeMillis(),
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id)
@@ -42,7 +42,7 @@ data class Account(
             secret = o.optString("secret", ""),
             apiBase = o.optString("apiBase", "https://api.sgroup.qq.com"),
             env = o.optString("env", "prod"),
-            createdAt = o.optLong("createdAt", System.currentTimeMillis())
+            createdAt = o.optLong("createdAt", System.currentTimeMillis()),
         )
     }
 }
@@ -154,7 +154,9 @@ object AccountManager {
     fun activeApiBase(): String = active()?.apiBase ?: "https://api.sgroup.qq.com"
     fun activeEnv(): String = active()?.env ?: "prod"
 
-    private fun persist() { persistList(loadAll(), activeAccountId) }
+    private fun persist() {
+        persistList(loadAll(), activeAccountId)
+    }
 
     /** 导出账号快照（供 ConfigExport 使用） */
     fun exportSnapshot(): JSONObject {
@@ -174,7 +176,9 @@ object AccountManager {
             val list = mutableListOf<Account>()
             for (i in 0 until arr.length()) {
                 val o = arr.optJSONObject(i) ?: continue
-                try { list.add(Account.fromJson(o)) } catch (_: Exception) {}
+                try {
+                    list.add(Account.fromJson(o))
+                } catch (_: Exception) {}
             }
             if (list.isEmpty()) return
             val newActive = if (list.any { it.id == active }) active else list.first().id
@@ -211,8 +215,12 @@ object AccountManager {
         val secret = Config.qqSecret
         if (appId.isBlank()) return
         val a = Account(
-            "acc_default", "默认机器人", appId, secret,
-            Config.qqApiBase, Config.qqEnv
+            "acc_default",
+            "默认机器人",
+            appId,
+            secret,
+            Config.qqApiBase,
+            Config.qqEnv,
         )
         activeAccountId = a.id
         persistList(listOf(a), activeAccountId)
@@ -239,7 +247,7 @@ object AccountManager {
         var migrated = 0
         for (sub in subs) {
             val dst = File(targetRoot, sub.name)
-            if (dst.exists()) continue   // 已存在=已迁移过/用户自装，跳过
+            if (dst.exists()) continue // 已存在=已迁移过/用户自装，跳过
             if (copyDirRecursive(sub, dst)) {
                 migrated++
                 Logs.info("[插件] 旧版插件迁移到 $accountId：${sub.name}")

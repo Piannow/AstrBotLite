@@ -7,8 +7,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File
-import java.io.PrintStream
-import java.io.ByteArrayOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.withLock
 
@@ -132,7 +130,9 @@ object PythonRuntime {
             var count = 0
             while (e != null) {
                 if (shouldCancel()) {
-                    try { zis.close() } catch (_: Exception) {}
+                    try {
+                        zis.close()
+                    } catch (_: Exception) {}
                     return false
                 }
                 if (!e.isDirectory) {
@@ -150,7 +150,7 @@ object PythonRuntime {
             }
             true
         } catch (ex: Exception) {
-            Logs.err("Python 插件 ${id} 解压失败: ${ex.message}")
+            Logs.err("Python 插件 $id 解压失败: ${ex.message}")
             false
         }
     }
@@ -179,7 +179,9 @@ object PythonRuntime {
                 } catch (_: Exception) {
                     emptyMap()
                 }
-            } else emptyMap()
+            } else {
+                emptyMap()
+            }
             aliases = m
             return m
         }
@@ -254,8 +256,7 @@ object PythonRuntime {
     // ---------------- 消息分发 ----------------
 
     /** 插件在统一 Python 环境的根目录（按别名解析；不存在返回 null）。Web 转换/探测用 */
-    fun pluginDir(id: String): File? =
-        File(apyDir, aliasDir(id)).takeIf { it.isDirectory }
+    fun pluginDir(id: String): File? = File(apyDir, aliasDir(id)).takeIf { it.isDirectory }
 
     /** 判断某插件是否装进了 Python 环境（有目录即视为"原生 Python 插件"） */
     fun hasPlugin(id: String): Boolean = File(apyDir, aliasDir(id)).exists()
@@ -274,8 +275,7 @@ object PythonRuntime {
     /** 分发结果：文本回复 + 可选的按钮行 JSON（QQ keyboard rows） */
     data class PyDispatch(val reply: String?, val buttons: String?)
 
-    fun dispatch(pluginIds: List<String>, text: String, sessionKey: String): String? =
-        dispatchEx(pluginIds, text, sessionKey)?.reply
+    fun dispatch(pluginIds: List<String>, text: String, sessionKey: String): String? = dispatchEx(pluginIds, text, sessionKey)?.reply
 
     fun dispatchEx(pluginIds: List<String>, text: String, sessionKey: String): PyDispatch? {
         if (!ready.get() || pluginIds.isEmpty()) return null
@@ -312,7 +312,9 @@ object PythonRuntime {
                 if (reply != null || buttons != null) PyDispatch(reply, buttons) else null
             } else if (o.optString("error").isNotBlank()) {
                 PyDispatch("插件执行失败：${o.optString("error").take(160)}", null)
-            } else null
+            } else {
+                null
+            }
         } catch (e: Exception) {
             Logs.err("Python 插件分发异常: ${e.message}")
             PyDispatch("插件执行异常：${e.message?.take(120)}", null)
@@ -363,7 +365,7 @@ object PythonRuntime {
         path: String,
         queryJson: String,
         bodyJson: String,
-        configsJson: String = "{}"
+        configsJson: String = "{}",
     ): String {
         fun err(msg: String) = """{"ok":"false","error":${JSONObject.quote(msg)}}"""
         if (!ready.get()) return err("Python 环境未就绪")
@@ -404,10 +406,13 @@ object PythonRuntime {
     // ---------------- Python 桥接执行器（1.7.207） ----------------
     /** 桥接线程池大小：固定值，绝不随调用次数增长 */
     private const val BRIDGE_THREADS = 3
+
     /** 单次桥接超时（秒） */
     private const val BRIDGE_TIMEOUT_SEC = 15L
+
     /** LLM hook 超时（秒）：与旧版一致，失败静默保持原回复 */
     private const val HOOK_TIMEOUT_SEC = 10L
+
     /** 累计卡死次数上限：达到即熔断，避免页面每个请求都等满超时 */
     private const val BRIDGE_MAX_STUCK = 6
 
@@ -430,7 +435,7 @@ object PythonRuntime {
         return try {
             val v = future.get(timeoutSec, java.util.concurrent.TimeUnit.SECONDS)
             if (bridgeStuck.get() > 0) {
-                bridgeStuck.set(0)   // 一次成功即证明桥还活着，解除熔断
+                bridgeStuck.set(0) // 一次成功即证明桥还活着，解除熔断
                 Logs.info("[Py桥] 已恢复正常，卡死计数清零")
             }
             v
